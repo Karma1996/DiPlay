@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAR-3 H1 门禁包 · v0.1.0</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6572; --line:#d8dee6; --accent:#0b5cad; --code:#f4f6f9; --ok:#1d6b3a; --ok-soft:#eaf6ee; --warn:#8a4b00; --warn-soft:#fff5e6; --danger:#a11919; --danger-soft:#fdecec; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#fff; color:var(--fg); font:15px/1.72 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  .layout { display:grid; grid-template-columns:250px minmax(0,1fr); max-width:1180px; margin:0 auto; }
+  nav.toc { position:sticky; top:0; align-self:start; max-height:100vh; overflow:auto; padding:24px 16px; border-right:1px solid var(--line); }
+  nav.toc strong { display:block; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  nav.toc ol { margin:0; padding-left:18px; }
+  nav.toc a { color:var(--fg); text-decoration:none; }
+  nav.toc a:hover, nav.toc a:focus-visible { color:var(--accent); text-decoration:underline; }
+  main { padding:32px 40px 72px; min-width:0; }
+  header.doc { border-bottom:2px solid var(--fg); padding-bottom:16px; margin-bottom:20px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  h2 { font-size:21px; margin:38px 0 12px; padding-top:8px; border-top:1px solid var(--line); }
+  h3 { font-size:16px; margin:20px 0 8px; }
+  p,li { margin:8px 0; }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; font-size:14px; }
+  th,td { border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top; }
+  th { background:#f3f6f9; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; font-weight:600; border:1px solid transparent; }
+  .ready { background:var(--ok-soft); color:var(--ok); border-color:#c6e6d0; }
+  .pending { background:var(--warn-soft); color:var(--warn); border-color:#f3ddb8; }
+  .todo { background:#eef1f5; color:var(--muted); border-color:#dde3ea; }
+  .box { border:1px solid var(--line); border-left:4px solid var(--accent); background:#fbfcfe; padding:10px 14px; margin:14px 0; }
+  .box.warn { border-left-color:var(--warn); background:var(--warn-soft); }
+  .box.ok { border-left-color:var(--ok); background:var(--ok-soft); }
+  .box .t { font-weight:700; display:block; }
+  .id { font:600 13px/1.4 ui-monospace,Menlo,monospace; color:var(--accent); }
+  .approve { border:2px solid var(--fg); border-radius:8px; padding:18px 20px; margin:18px 0; }
+  .approve table { margin:8px 0 0; }
+  .sig { height:34px; }
+  footer { margin-top:48px; padding-top:14px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+  @media (max-width:880px) { .layout{grid-template-columns:1fr;} nav.toc{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);} main{padding:18px;} table{display:block;overflow-x:auto;} }
+  @media print { nav.toc{position:static;max-height:none;} .layout{display:block;max-width:none;} main{padding:0;} table,.box,.approve{break-inside:avoid;} a{color:inherit;text-decoration:none;} }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="目录">
+  <strong>目录</strong>
+  <ol>
+    <li><a href="#h1-summary">门禁摘要</a></li>
+    <li><a href="#h1-artifacts">材料清单</a></li>
+    <li><a href="#h1-intake">受理字段核对（约章 §8）</a></li>
+    <li><a href="#h1-coverage">需求覆盖统计</a></li>
+    <li><a href="#h1-prototype">原型判定与走查记录</a></li>
+    <li><a href="#h1-open">开放问题与假设</a></li>
+    <li><a href="#h1-risk">风险与红线</a></li>
+    <li><a href="#h1-h3">H3 待真车验证</a></li>
+    <li><a href="#h1-gates">阶段质量门自检</a></li>
+    <li><a href="#h1-approval">H1 审批栏</a></li>
+    <li><a href="#h1-next">下一步</a></li>
+  </ol>
+</nav>
+<main>
+
+<header class="doc">
+  <h1>KAR-3 H1 门禁包</h1>
+  <p style="color:var(--muted);margin:0">支持自动热点连接 · 需求基线评审包 · v0.1.0 · 2026-10-31</p>
+</header>
+
+<section id="h1-summary">
+<h2>1. 门禁摘要</h2>
+<table>
+  <tbody>
+    <tr><th scope="row">请求</th><td><strong>H1 人类需求基线评审</strong>：批准 <a href="需求分析文档.html">需求分析文档 v0.1.0</a> 与 <a href="交互原型.html">交互原型 v0.1.0</a> 作为设计阶段输入。</td></tr>
+    <tr><th scope="row">阶段</th><td>discovery（仅受理与需求；未进入 build，未改生产代码）</td></tr>
+    <tr><th scope="row">提交人</th><td>KAR-02-Analyst</td></tr>
+    <tr><th scope="row">分支</th><td><code>feat/KAR-3-auto-hotspot-connect</code>（基于 <code>main@615b32c</code>）</td></tr>
+    <tr><th scope="row">Head</th><td>见 S01 HANDOFF 评论记录的 commit SHA；分支历史可复核</td></tr>
+    <tr><th scope="row">结论</th><td><span class="pill ready">材料齐备，等待人类批准</span> <span class="pill pending">未决需求问题 0 条</span> <span class="pill pending">真车验证 0 项已通过（全部待验证）</span></td></tr>
+  </tbody>
+</table>
+<div class="box warn">
+  <span class="t">本包不声称任何"已通过"</span>
+  真车验证是 H3 的硬条件（项目约章 §3）。本包只提供"待真车验证"清单与判定方法；任何车型、任何 iPhone 均未被 Agent 验证过。
+</div>
+</section>
+
+<section id="h1-artifacts">
+<h2>2. 材料清单</h2>
+<table>
+  <caption>表 2-1 H1 提交物（同一提交、同一版本）</caption>
+  <thead><tr><th scope="col">#</th><th scope="col">文件</th><th scope="col">版本</th><th scope="col">用途</th><th scope="col">状态</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><a href="需求分析文档.html">需求分析文档.html</a></td><td>v0.1.0</td><td>需求基线：14 FR / 11 NFR / 25 AC / RTM / H3 清单</td><td><span class="pill ready">完成</span></td></tr>
+    <tr><td>2</td><td><a href="开放问题清单.html">开放问题清单.html</a></td><td>v0.1.0</td><td>两轮澄清、逐条收敛、假设与决策请求</td><td><span class="pill ready">完成</span></td></tr>
+    <tr><td>3</td><td><a href="交互原型.html">交互原型.html</a></td><td>v0.1.0</td><td>10 个 SC 场景，可点击、可离线、带回放与评审模式</td><td><span class="pill ready">完成</span></td></tr>
+    <tr><td>4</td><td><a href="H1-门禁包.html">H1-门禁包.html</a></td><td>v0.1.0</td><td>本文件：受理字段、覆盖、风险、审批栏</td><td><span class="pill ready">完成</span></td></tr>
+  </tbody>
+</table>
+<p>版本与 SHA 绑定：H1 批准必须同时绑定 <code>需求分析文档.html v0.1.0</code> 与 <code>交互原型.html v0.1.0</code>，以及 HANDOFF 记录的提交 SHA。任一文件在批准后修改（行为语义变化）需做影响分析并重开 H1 或走 CR。</p>
+</section>
+
+<section id="h1-intake">
+<h2>3. 受理字段核对（项目约章 §8）</h2>
+<table>
+  <caption>表 3-1 七项受理字段逐项落点</caption>
+  <thead><tr><th scope="col">受理字段</th><th scope="col">是否写清</th><th scope="col">落点</th></tr></thead>
+  <tbody>
+    <tr><td>目标与用户场景</td><td>是</td><td><a href="需求分析文档.html#sec-3">§3 目标 / SM</a> · <a href="需求分析文档.html#sec-4">§4 角色与 S-01…S-08</a></td></tr>
+    <tr><td>影响范围（模块 / 车型 / 固件 / 语言）</td><td>是</td><td><a href="需求分析文档.html#sec-10-1">§10.1 影响范围</a>：<code>common</code>/<code>shared</code>/<code>mobile</code>；DiLink 3/4/5；Android 7.0+；11 语言</td></tr>
+    <tr><td>复现条件与诊断信息</td><td>是</td><td><a href="需求分析文档.html#sec-10-2">§10.2</a>：7 项最小信息 + 禁止外发清单</td></tr>
+    <tr><td>期望与验收证据</td><td>是</td><td><a href="需求分析文档.html#sec-7">§7 25 条 AC</a> · <a href="#h1-h3">本文件 §8 H3 清单</a></td></tr>
+    <tr><td>是否需要真车</td><td>是（需要）</td><td><a href="需求分析文档.html#appendix-a">附录 A</a>；H3 硬条件，Agent 不代验</td></tr>
+    <tr><td>风险等级</td><td>是</td><td>S1 连接路径回归为主，叠加 S2 固件兼容；<a href="需求分析文档.html#sec-10">§10.5 R-001…R-008</a></td></tr>
+    <tr><td>是否涉及身份 / 许可证 / 权限</td><td>是（均不新增）</td><td><a href="需求分析文档.html#sec-8">§8.2 权限表</a>：不新增权限、不动身份资产、不改许可证义务</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="h1-coverage">
+<h2>4. 需求覆盖统计</h2>
+<table>
+  <thead><tr><th scope="col">维度</th><th scope="col">数量</th><th scope="col">覆盖情况</th></tr></thead>
+  <tbody>
+    <tr><td>功能需求 FR</td><td>14（P0×11、P1×3）</td><td>100% 有 ≥1 条 AC</td></tr>
+    <tr><td>非功能需求 NFR</td><td>11</td><td>100% 可度量并有对应 AC（NFR-003/008/011 需真车或长跑）</td></tr>
+    <tr><td>验收标准 AC</td><td>25</td><td>100% Given/When/Then，可判定通过/失败</td></tr>
+    <tr><td>原型场景 SC</td><td>10</td><td>100% 映射到 FR/AC；SC-001…SC-010</td></tr>
+    <tr><td>假设 A</td><td>8</td><td>全部有依据与失效影响</td></tr>
+    <tr><td>决策请求 D</td><td>5</td><td>全部有建议默认值与备选</td></tr>
+    <tr><td>风险 R</td><td>8</td><td>S0×1、S1×4、S2×2、S3×0（R-007 计入 S1）</td></tr>
+    <tr><td>未决需求问题</td><td><strong>0</strong></td><td>10 条由事实回答，4 条转假设（Q-003/006/012/014）</td></tr>
+  </tbody>
+</table>
+<div class="box ok">
+  <span class="t">自检</span>
+  无孤儿 FR（每条都有 AC 与至少一个 SC 或明确标注"非 UI"）；无无来源需求（每条 FR 标注人类原话 / 代码事实 / 假设）；AC 无重复、无合并编号。
+</div>
+</section>
+
+<section id="h1-prototype">
+<h2>5. 原型判定与走查记录</h2>
+<p><strong>判定：required。</strong>触发条件：新增核心用户旅程（首次配对 → 后续零交互）；多状态（准备网络 / 寻找设备 / 等待入网 / 成功 / 失败 / 冲突 / 撤销）；多角色（车主与家人设备）；文字描述易歧义；真车返工成本高。按 S14 产出 <a href="交互原型.html">交互原型.html</a>（v0.1.0）。</p>
+
+<h3>5.1 原型最低标准核对</h3>
+<table>
+  <thead><tr><th scope="col">标准</th><th scope="col">落实</th></tr></thead>
+  <tbody>
+    <tr><td>单文件、自包含、离线可开</td><td>是：无外部字体 / CDN / 网络请求；内联 CSS/SVG/JS</td></tr>
+    <tr><td>场景目录与导航</td><td>是：左侧 SC-001…SC-010，可键盘操作</td></tr>
+    <tr><td>主流程可点击</td><td>是：首次配对、自动连接、失败、冲突、设置、撤销均可走通</td></tr>
+    <tr><td>loading / empty / error / success</td><td>是：SC-003/004 为 loading，SC-001/002 为 empty，SC-006/007/008 为 error，SC-005 为 success</td></tr>
+    <tr><td>固定假数据并标注</td><td>是：iPhone 15 Pro / 家人 iPhone 13；顶部"演示数据"徽标；不接后端</td></tr>
+    <tr><td>评审模式 + SC 映射</td><td>是：黄色编号 + 右侧标注，标注含 SC → FR/AC</td></tr>
+    <tr><td>无真实数据 / 密钥 / 后端</td><td>是：全部静态文案</td></tr>
+    <tr><td>键盘可操作、可访问</td><td>是：原生 button、focus-visible、跳过链接、aria 状态</td></tr>
+  </tbody>
+</table>
+
+<h3 id="proto-review">5.2 人类走查记录</h3>
+<div class="box warn">
+  <span class="t">尚未进行</span>
+  本包提交时尚无人类走查。H1 评审时请按下列场景逐条记录；记录完成前 H1 不应被批准。
+</div>
+<table>
+  <caption>表 5-1 走查记录（H1 时填写）</caption>
+  <thead><tr><th scope="col">SC</th><th scope="col">走不通的地方</th><th scope="col">缺失状态</th><th scope="col">与 AC 冲突</th><th scope="col">未决问题</th></tr></thead>
+  <tbody>
+    <tr><td>SC-001</td><td class="sig"></td><td></td><td></td><td></td></tr>
+    <tr><td>SC-002</td><td class="sig"></td><td></td><td></td><td></td></tr>
+    <tr><td>SC-003</td><td class="sig"></td><td></td><td></td><td></td></tr>
+    <tr><td>SC-004</td><td class="sig"></td><td></td><td></td><td></td></tr>
+    <tr><td>SC-005</td><td class="sig"></td><td></td><td></td><td></td></tr>
+    <tr><td>SC-006</td><td class="sig"></td><td></td><td></td><td></td></tr>
+    <tr><td>SC-007</td><td class="sig"></td><td></td><td></td><td></td></tr>
+    <tr><td>SC-008</td><td class="sig"></td><td></td><td></td><td></td></tr>
+    <tr><td>SC-009</td><td class="sig"></td><td></td><td></td><td></td></tr>
+    <tr><td>SC-010</td><td class="sig"></td><td></td><td></td><td></td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="h1-open">
+<h2>6. 开放问题与假设</h2>
+<p>完整逐条见 <a href="开放问题清单.html">开放问题清单.html</a>。摘要：</p>
+<ul>
+  <li><strong>14 个问题已全部收敛</strong>：10 个由仓库事实/现状分析回答，4 个转为显式假设（合计登记 A-001…A-008）。</li>
+  <li><strong>0 个未决需求问题进入 H1。</strong></li>
+  <li>5 个决策请求（D-001…D-005）需要人类明确表态；它们不改变需求内容，只改变默认值与资源安排。</li>
+</ul>
+<table>
+  <caption>表 6-1 需要人类在 H1 表态的决策</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">决策</th><th scope="col">建议</th><th scope="col">若驳回</th></tr></thead>
+  <tbody>
+    <tr><td class="id">D-001</td><td><code>develop</code> 基线（约章 §9.1）</td><td>由人类从 <code>main@615b32c</code> 建 <code>develop</code> 并加保护</td><td>继续以 <code>main</code> 为基线，需求分支不变</td></tr>
+    <tr><td class="id">D-002</td><td>自动连接默认开启</td><td>首次成功无线连接后默认开启，可关闭</td><td>改为默认关闭；SM-001 需重写为"开启后可达"</td></tr>
+    <tr><td class="id">D-003</td><td>H3 验收人与设备</td><td>指定 3 台 BYD（DiLink 3/4/5）+ 2 台 iPhone</td><td>H3 无法排期，需求不能进入验收</td></tr>
+    <tr><td class="id">D-004</td><td>原型 required</td><td>required，H1 联合批准</td><td>按文字 AC 走查；交互歧义风险由 AC 承担</td></tr>
+    <tr><td class="id">D-005</td><td>首发后端范围</td><td>MANUAL 验收 + WIFI_P2P / EXISTING_WIFI 回归</td><td>四后端全验收，排期与真车资源需追加</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="h1-risk">
+<h2>7. 风险与红线</h2>
+<table>
+  <caption>表 7-1 风险摘要（完整见需求文档 §10.5）</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">风险</th><th scope="col">等级</th><th scope="col">关闭时点</th></tr></thead>
+  <tbody>
+    <tr><td class="id">R-001</td><td>自动触发改变连接时序，导致既有连接路径回归</td><td>S1</td><td>H2 前</td></tr>
+    <tr><td class="id">R-002</td><td>默认开启属于未经同意的行为变更</td><td>S1</td><td>H1（D-002）</td></tr>
+    <tr><td class="id">R-003</td><td>DiLink 固件差异导致自动连接在某些车上不可达</td><td>S2</td><td>H3 前</td></tr>
+    <tr><td class="id">R-004</td><td>进程被杀/后台限制使蓝牙唤醒失效</td><td>S2</td><td>H3 前</td></tr>
+    <tr><td class="id">R-005</td><td>多设备场景误连到家人手机</td><td>S1</td><td>H2 前</td></tr>
+    <tr><td class="id">R-006</td><td>失败时反复弹窗，影响驾驶</td><td>S1</td><td>H2 前</td></tr>
+    <tr><td class="id">R-007</td><td>11 语言漏翻或设置 IA 被破坏</td><td>S1</td><td>H2 前</td></tr>
+    <tr><td class="id">R-008</td><td>诊断误带热点口令或设备标识</td><td>S0</td><td>持续</td></tr>
+  </tbody>
+</table>
+<div class="box">
+  <span class="t">红线复核</span>
+  本阶段未触碰：身份资产、签名密钥、诊断外发、生产代码、状态/assignee、其他 Agent 的 mention、合并操作。仓库内唯一新增为 <code>multica/requirements/KAR-3-auto-hotspot-connect/</code> 下的文档与原型。
+</div>
+</section>
+
+<section id="h1-h3">
+<h2>8. H3 待真车验证</h2>
+<p>完整矩阵与动作（8 个设备槽位、7 类动作）见 <a href="需求分析文档.html#appendix-a">需求文档附录 A</a>。摘要：</p>
+<ul>
+  <li>V-01 DiLink 3.0（Android 9）· V-02 DiLink 4.0（Android 10）· V-03 DiLink 5.x（Android 12+）· V-04 旧 iOS 设备 · V-05 Wi-Fi Direct · V-06 外部 Wi-Fi · V-07 无 ADB 车机 · V-08 有线回归。</li>
+  <li>每槽位必测：冷启动 ×10、休眠唤醒 ×10、断连恢复 ×10、热点自动开启 ×5、多设备冲突 ×5、关闭自动连接 ×5、诊断脱敏复核。</li>
+  <li><strong>当前状态：全部"待验证"，0 项通过。</strong>需要 D-003 指定验收人后才能排期。</li>
+</ul>
+</section>
+
+<section id="h1-gates">
+<h2>9. 阶段质量门自检</h2>
+<table>
+  <caption>表 9-1 项目约章 §5 在本阶段的适用项</caption>
+  <thead><tr><th scope="col">质量门</th><th scope="col">本阶段适用性</th><th scope="col">状态</th></tr></thead>
+  <tbody>
+    <tr><td>§5.1 CI 全量命令</td><td>本阶段无代码改动，不触发；由开发阶段执行</td><td><span class="pill todo">不适用</span></td></tr>
+    <tr><td>§5.2 公共树检查</td><td>提交后对文档树执行 <code>python3 scripts/check_public_tree.py</code></td><td><span class="pill ready">已执行（见 HANDOFF）</span></td></tr>
+    <tr><td>§5.3 设置信息架构</td><td>需求已约束落点为 <code>AUTOMATIC_CONNECTION</code>（FR-011）</td><td><span class="pill ready">已约束</span></td></tr>
+    <tr><td>§5.4 多语言</td><td>需求要求 11 套 values + RTL（NFR-007）</td><td><span class="pill ready">已约束</span></td></tr>
+    <tr><td>§5.5 界面证据</td><td>开发阶段产出；需求阶段以原型代替</td><td><span class="pill todo">后置</span></td></tr>
+    <tr><td>§5.6 连接与音视频设备矩阵</td><td>H3 清单已列；不标记通过</td><td><span class="pill pending">待真车</span></td></tr>
+    <tr><td>§5.7 性能/稳定性</td><td>NFR-002/003/008 已量化</td><td><span class="pill ready">已约束</span></td></tr>
+    <tr><td>文档自检：TOC 锚点、编号唯一、无外部依赖</td><td>四份材料全部自检</td><td><span class="pill ready">通过</span></td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="h1-approval">
+<h2>10. H1 审批栏</h2>
+<div class="approve">
+  <p><strong>批准即表示：</strong>接受需求分析文档 v0.1.0（14 FR / 11 NFR / 25 AC / 8 假设 / 5 决策）与交互原型 v0.1.0 作为设计阶段输入；批准 D-001…D-005 的建议或给出替代决定；确认 H3 由人类真车验收。</p>
+  <table>
+    <tbody>
+      <tr><th scope="row">材料版本</th><td>需求分析文档 v0.1.0 · 交互原型 v0.1.0 · H1 包 v0.1.0</td></tr>
+      <tr><th scope="row">提交 SHA</th><td>见 S01 HANDOFF（分支 head）</td></tr>
+      <tr><th scope="row">人类结论</th><td>☐ 批准　　☐ 驳回　　☐ 有条件批准（条件：________________）</td></tr>
+      <tr><th scope="row">D-001</th><td>☐ 接受建议　☐ 替代：________________</td></tr>
+      <tr><th scope="row">D-002</th><td>☐ 接受建议　☐ 替代：________________</td></tr>
+      <tr><th scope="row">D-003</th><td>验收人：____________　车型 / 版本 / iPhone / iOS：____________</td></tr>
+      <tr><th scope="row">D-004</th><td>☐ 接受建议　☐ 替代：________________</td></tr>
+      <tr><th scope="row">D-005</th><td>☐ 接受建议　☐ 替代：________________</td></tr>
+      <tr><th scope="row">签字 / 日期</th><td class="sig"></td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="box warn">
+  <span class="t">批准规则</span>
+  只有人类明确文字批准才算数；沉默、表情、模糊表态都不算（项目约章 §3）。批准必须绑定上表版本与 SHA；批准后若需求行为变化，回到 H1。
+</div>
+</section>
+
+<section id="h1-next">
+<h2>11. 下一步</h2>
+<ol>
+  <li>KAR-01-Lead 将本包路由给人类 Owner 做 H1 评审；走查原型并填写 §5.2 记录。</li>
+  <li>人类对 D-001…D-005 给出明确结论。</li>
+  <li>H1 批准后进入 design（KAR-03-Architect）：输出方案设计文档、FR/NFR/SC 覆盖矩阵、ADR。</li>
+  <li>设计阶段不得扩大本包的范围（尤其是：不改 USB、不新增权限、不新增配对方式、不扩大车型）。</li>
+</ol>
+<footer>
+  <p>KAR-02-Analyst · H1 门禁包 v0.1.0 · 2026-10-31 · 分支 <code>feat/KAR-3-auto-hotspot-connect</code></p>
+</footer>
+</section>
+
+</main>
+</div>
+</body>
+</html>

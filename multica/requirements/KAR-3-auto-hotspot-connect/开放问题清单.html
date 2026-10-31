@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAR-3 开放问题清单 · v0.1.0</title>
+<style>
+  :root { --fg:#1b1f24; --muted:#5b6572; --line:#d8dee6; --accent:#0b5cad; --warn:#8a4b00; --warn-soft:#fff5e6; --ok:#1d6b3a; --ok-soft:#eaf6ee; --code:#f4f6f9; --danger:#a11919; --danger-soft:#fdecec; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#fff; color:var(--fg); font:15px/1.72 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  .layout { display:grid; grid-template-columns:250px minmax(0,1fr); max-width:1180px; margin:0 auto; }
+  nav.toc { position:sticky; top:0; align-self:start; max-height:100vh; overflow:auto; padding:24px 16px; border-right:1px solid var(--line); }
+  nav.toc strong { display:block; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  nav.toc ol { margin:0; padding-left:18px; }
+  nav.toc a { color:var(--fg); text-decoration:none; }
+  nav.toc a:hover, nav.toc a:focus-visible { color:var(--accent); text-decoration:underline; }
+  main { padding:32px 40px 72px; min-width:0; }
+  header.doc { border-bottom:2px solid var(--fg); padding-bottom:16px; margin-bottom:22px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  h2 { font-size:21px; margin:40px 0 12px; padding-top:8px; border-top:1px solid var(--line); }
+  h3 { font-size:16px; margin:22px 0 8px; }
+  p, li { margin:8px 0; }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; font-size:14px; }
+  th, td { border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top; }
+  th { background:#f3f6f9; }
+  .q { border:1px solid var(--line); border-radius:6px; padding:12px 16px; margin:14px 0; }
+  .q h3 { margin:0 0 8px; font-size:16px; }
+  .id { font:600 13px/1.4 ui-monospace,Menlo,monospace; color:var(--accent); }
+  .kv { display:grid; grid-template-columns:120px minmax(0,1fr); gap:2px 10px; font-size:14px; }
+  .kv dt { color:var(--muted); }
+  .kv dd { margin:0; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; font-weight:600; border:1px solid transparent; }
+  .resolved { background:var(--ok-soft); color:var(--ok); border-color:#c6e6d0; }
+  .assumed { background:var(--warn-soft); color:var(--warn); border-color:#f3ddb8; }
+  .box { border:1px solid var(--line); border-left:4px solid var(--accent); background:#fbfcfe; padding:10px 14px; margin:14px 0; }
+  .box.warn { border-left-color:var(--warn); background:var(--warn-soft); }
+  .box.ok { border-left-color:var(--ok); background:var(--ok-soft); }
+  .box .t { font-weight:700; display:block; }
+  footer { margin-top:48px; padding-top:14px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+  @media (max-width:880px) { .layout{grid-template-columns:1fr;} nav.toc{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);} main{padding:18px;} table{display:block;overflow-x:auto;} }
+  @media print { nav.toc{position:static;max-height:none;} .layout{display:block;max-width:none;} main{padding:0;} .q,table,.box{break-inside:avoid;} a{color:inherit;text-decoration:none;} }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="目录">
+  <strong>目录</strong>
+  <ol>
+    <li><a href="#q-meta">文档控制与规则</a></li>
+    <li><a href="#q-r1">第 1 轮问题（Q-001…Q-007）</a></li>
+    <li><a href="#q-r2">第 2 轮问题（Q-008…Q-014）</a></li>
+    <li><a href="#q-summary">收敛汇总</a></li>
+    <li><a href="#q-assumptions">假设登记</a></li>
+    <li><a href="#q-decisions">H1 决策请求</a></li>
+    <li><a href="#q-change">变更记录</a></li>
+  </ol>
+</nav>
+<main>
+
+<header class="doc">
+  <h1>KAR-3 开放问题清单</h1>
+  <p style="color:var(--muted);margin:0">两轮结构化澄清、逐条收敛结论与假设登记 · v0.1.0 · 2026-10-31</p>
+</header>
+
+<section id="q-meta">
+<h2>1. 文档控制与规则</h2>
+<table>
+  <tbody>
+    <tr><th scope="row">Issue</th><td>KAR-3（<code>01a19291-ef3e-71fd-ba30-a22b82b6b371</code>）</td></tr>
+    <tr><th scope="row">版本</th><td>v0.1.0</td></tr>
+    <tr><th scope="row">作者</th><td>KAR-02-Analyst</td></tr>
+    <tr><th scope="row">配套</th><td><a href="需求分析文档.html">需求分析文档.html</a> · <a href="交互原型.html">交互原型.html</a> · <a href="H1-门禁包.html">H1-门禁包.html</a></td></tr>
+    <tr><th scope="row">分支</th><td><code>feat/KAR-3-auto-hotspot-connect</code>（基于 <code>main@615b32c</code>）</td></tr>
+  </tbody>
+</table>
+<p><strong>收敛规则：</strong></p>
+<ul>
+  <li>能通过仓库、文档、平台事实查到答案的，<strong>不提问</strong>，直接记为"事实回答"并给出文件路径与行号。</li>
+  <li>无法由事实回答、但可以安全默认的，转为<strong>显式假设</strong>（A-xxx），写明依据与不成立的影响；H1 批准即视为基线。</li>
+  <li>只有改变产品默认行为或涉及人类资源的，才作为<strong>决策请求</strong>（D-xxx）留到 H1，并已给出建议默认值。</li>
+  <li>不允许把未决问题藏在正文段落里；本清单是唯一清单。</li>
+</ul>
+<div class="box ok">
+  <span class="t">结论（H1 前）</span>
+  14 个问题：<strong>10 个由仓库事实/现状分析直接回答</strong>，<strong>4 个转为显式假设</strong>（Q-003/Q-006/Q-012/Q-014），<strong>0 个未收敛</strong>；另登记 8 条假设（A-001…A-008）。另有 5 项决策请求（D-001…D-005）不阻塞 H1 评审，但需人类明确批准或驳回。
+</div>
+</section>
+
+<section id="q-r1">
+<h2>2. 第 1 轮问题（Q-001…Q-007）</h2>
+<p>第 1 轮聚焦：问题是什么、谁受影响、范围到哪里、哪些约束不可动。</p>
+
+<article class="q" id="q-001">
+<h3><span class="id">Q-001</span> 「手动链接」具体指哪一步？ <span class="pill resolved">已收敛</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>这句话可能指车机侧点按、iPhone 侧操作、或开热点，范围差一个量级。</dd>
+  <dt>建议默认</dt><dd>只承诺 DiPlay 可控的车机侧：打开应用、点 Connect、选设备、开热点。</dd>
+  <dt>不同选择影响</dt><dd>若包含 iPhone 侧蓝牙配对，则超出 DiPlay 能力（非越狱/非 MFi 身份不做），需求不可实现。</dd>
+  <dt>收敛结论</dt><dd>车机侧四步。iPhone 的首次蓝牙配对仍由人完成（BR-5）。</dd>
+  <dt>依据</dt><dd>人类原话 + <code>docs/CONNECTION_SETUP.md</code> 第 4–5 步 + 项目约章 §1「不做 iPhone 越狱或插件」</dd>
+</dl>
+</article>
+
+<article class="q" id="q-002">
+<h3><span class="id">Q-002</span> 四种无线后端都要"自动"吗？ <span class="pill resolved">已收敛</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>后端差异会导致验收矩阵膨胀。</dd>
+  <dt>建议默认</dt><dd>自动策略对所有已保存后端生效；首发验收以 <code>MANUAL_HOTSPOT</code> 为主，其余做回归。</dd>
+  <dt>不同选择影响</dt><dd>全部纳入首发验收会让真车资源需求翻倍；只做一种会让 WIFI_P2P 用户觉得"没修"。</dd>
+  <dt>收敛结论</dt><dd>规则统一、验收分级（D-005）。</dd>
+  <dt>依据</dt><dd><code>ConnectionSettingsSection.kt:48-66</code>（MANUAL 为推荐项）+ 约章 §7 优先级</dd>
+</dl>
+</article>
+
+<article class="q" id="q-003">
+<h3><span class="id">Q-003</span> 自动连接默认开启还是默认关闭？ <span class="pill assumed">转假设 A-002 + 决策 D-002</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>直接决定"默认体验是否等于用户诉求"。</dd>
+  <dt>建议默认</dt><dd>首次成功无线连接后默认开启；设置可关闭，关闭后行为等同 0.2.22。</dd>
+  <dt>不同选择影响</dt><dd>默认关闭：SM-001 不可达，用户仍要自己找开关；默认开启：属于行为变更，需人类同意（R-002）。</dd>
+  <dt>收敛结论</dt><dd>作为假设 A-002 推进，H1 由人类拍板 D-002。</dd>
+  <dt>依据</dt><dd>现状四个开关默认全关（<code>DiPlayBootstrap.kt:79-86</code>）</dd>
+</dl>
+</article>
+
+<article class="q" id="q-004">
+<h3><span class="id">Q-004</span> 哪些时机算"自动"？ <span class="pill resolved">已收敛</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>触发源决定权限依赖与真车测试项。</dd>
+  <dt>建议默认</dt><dd>冷启动、打开应用、首选 iPhone 蓝牙到达、休眠唤醒四类；不含 BLE 靠近。</dd>
+  <dt>不同选择影响</dt><dd>加入 BLE 靠近需要新扫描与功耗预算，且 DiLink 蓝牙广播不可靠。</dd>
+  <dt>收敛结论</dt><dd>四类触发 + 降级阶梯（FR-002），BLE 靠近列为非目标 NG-2。</dd>
+  <dt>依据</dt><dd>现有 <code>BootReceiver</code>/<code>PhoneBluetoothReceiver</code>/Activity 三条路径 + 缺失唤醒触发（§2.1）</dd>
+</dl>
+</article>
+
+<article class="q" id="q-005">
+<h3><span class="id">Q-005</span> 自动连接失败时应该弹窗吗？ <span class="pill resolved">已收敛</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>驾驶场景下弹窗影响安全，也影响"是否算打扰"。</dd>
+  <dt>建议默认</dt><dd>不弹全屏阻塞框；Home/启动界面显示原因 + 单一"重试"。</dd>
+  <dt>不同选择影响</dt><dd>弹窗更醒目但可能遮挡倒车影像、打断驾驶；不弹则依赖状态可见性（FR-010）。</dd>
+  <dt>收敛结论</dt><dd>NFR-011 + FR-007 + FR-010；AC-009、AC-025。</dd>
+  <dt>依据</dt><dd>现有失败路径使用 <code>appDialogBuilder</code>；约章 §3 安全优先</dd>
+</dl>
+</article>
+
+<article class="q" id="q-006">
+<h3><span class="id">Q-006</span> 重试多少次、多久算"尽力"？ <span class="pill assumed">转假设 A-003</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>太少连不上，太多让车主干等且耗电。</dd>
+  <dt>建议默认</dt><dd>≤ 5 次、总时长 ≤ 150 s、退避 ≥ 2 s。</dd>
+  <dt>不同选择影响</dt><dd>预算过大→等待焦虑；过小→弱信号/慢启动车机误判失败。</dd>
+  <dt>收敛结论</dt><dd>写入 NFR-002 / AC-008，H3 实测后可按证据调整。</dd>
+  <dt>依据</dt><dd><code>WirelessStartupPolicy.kt:4-11</code>（5 次、15 s、30 s、60 s）</dd>
+</dl>
+</article>
+
+<article class="q" id="q-007">
+<h3><span class="id">Q-007</span> 这算连接路径改动吗？风险等级？ <span class="pill resolved">已收敛</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>决定门禁与验证强度。</dd>
+  <dt>建议默认</dt><dd>算；S1（连接路径回归）为主，叠加 S2（固件兼容）。</dd>
+  <dt>不同选择影响</dt><dd>若按 S3 处理会漏掉真车验证与回归，违反约章 §6。</dd>
+  <dt>收敛结论</dt><dd>风险登记 R-001…R-008；H3 真车为硬条件。</dd>
+  <dt>依据</dt><dd>约章 §3「连接、音频、HUD、车辆数据类改动，H3 必须真车」+ §6 S1/S2</dd>
+</dl>
+</article>
+</section>
+
+<section id="q-r2">
+<h2>3. 第 2 轮问题（Q-008…Q-014）</h2>
+<p>第 2 轮聚焦：边界与异常、权限与数据、非功能、验收与回滚、依赖。</p>
+
+<article class="q" id="q-008">
+<h3><span class="id">Q-008</span> 热点口令保存吗？存在哪里？ <span class="pill resolved">已收敛</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>自动连接必然要复用已保存的热点凭据，位置决定安全边界。</dd>
+  <dt>建议默认</dt><dd>维持现状：应用私有 <code>SharedPreferences</code>，不新增副本。</dd>
+  <dt>不同选择影响</dt><dd>改用 Keystore 加密会扩大改动面（NG-6），且当前 <code>allowBackup=false</code> 已阻断备份外泄。</dd>
+  <dt>收敛结论</dt><dd>NFR-004；本需求不改存储介质，只约束"不得新增副本/不得外泄"。</dd>
+  <dt>依据</dt><dd><code>AirPlayPersistence.kt:60-61,459-478</code> · <code>mobile/src/main/AndroidManifest.xml:6</code> · <code>SettingsBackupCodec.kt:23-40</code>（口令不在白名单）</dd>
+</dl>
+</article>
+
+<article class="q" id="q-009">
+<h3><span class="id">Q-009</span> 别人能冒连吗？ <span class="pill resolved">已收敛</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>"自动连"容易被理解成"谁都能连"。</dd>
+  <dt>建议默认</dt><dd>不改信任模型：热点口令 + iAP2 配对认证双门槛；自动连接只认首选设备。</dd>
+  <dt>不同选择影响</dt><dd>若为方便放宽认证，会触及 Apple 认证红线与安全红线（S0）。</dd>
+  <dt>收敛结论</dt><dd>NFR-005 + FR-008 + BR-2；开放热点场景列入 H3 检查项。</dd>
+  <dt>依据</dt><dd><code>CarPlayController.kt:2615-2662</code>（只认已配对/已选设备）· <code>docs/WIRELESS_HOTSPOT_JOIN.md</code></dd>
+</dl>
+</article>
+
+<article class="q" id="q-010">
+<h3><span class="id">Q-010</span> 首次配对能否也自动？ <span class="pill resolved">已收敛</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>用户说"第一次之后"，但边界需要写死。</dd>
+  <dt>建议默认</dt><dd>首次必须显式：选设备、确认热点、接受系统配对提示。</dd>
+  <dt>不同选择影响</dt><dd>全自动配对会绕过用户知情与安全确认，且无 App 可用的配对 API。</dd>
+  <dt>收敛结论</dt><dd>FR-004 / BR-5；AC-005。</dd>
+  <dt>依据</dt><dd>人类原话「第一次链接之后」+ <code>choosePhone()</code> 现有交互</dd>
+</dl>
+</article>
+
+<article class="q" id="q-011">
+<h3><span class="id">Q-011</span> 没有 ADB 的车主怎么办？ <span class="pill resolved">已收敛</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>开机自启与自动开热点目前都依赖 ADB 授予的权限。</dd>
+  <dt>建议默认</dt><dd>降级阶梯：没有 ADB 时至少"打开 DiPlay 即自动连接"成立。</dd>
+  <dt>不同选择影响</dt><dd>若把 ADB 当必需，绝大多数车主拿不到本需求的价值。</dd>
+  <dt>收敛结论</dt><dd>G-4 + FR-002 阶梯 + AC-002；H3 增加"无 ADB 车机"槽位 V-07。</dd>
+  <dt>依据</dt><dd><code>CarHotspotSetup.kt:20-25,51</code>（权限经 ADB 授予）· <code>docs/CONNECTION_SETUP.md</code>「needs an already-authorized … ADB connection」</dd>
+</dl>
+</article>
+
+<article class="q" id="q-012">
+<h3><span class="id">Q-012</span> 「休眠唤醒」怎么定义？ <span class="pill assumed">转假设 A-004</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>车机可能熄屏休眠、可能被杀进程、可能直接断电。</dd>
+  <dt>建议默认</dt><dd>指未重启的系统/屏幕唤醒；进程被杀不承诺后台恢复，退化为启动触发。</dd>
+  <dt>不同选择影响</dt><dd>要求进程被杀也恢复 → 需要常驻前台服务或定时唤醒，触及功耗（NFR-003）与权限（A-007）。</dd>
+  <dt>收敛结论</dt><dd>FR-009 + A-004；H3 记录"唤醒方式"。</dd>
+  <dt>依据</dt><dd>现有清单仅 <code>BOOT_COMPLETED</code>（<code>AndroidManifest.xml:173-180</code>）</dd>
+</dl>
+</article>
+
+<article class="q" id="q-013">
+<h3><span class="id">Q-013</span> 有线/ USB 要不要一起改？ <span class="pill resolved">已收敛</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>用户只说"链接"，可能包含有线。</dd>
+  <dt>建议默认</dt><dd>不改，只保证不回归。</dd>
+  <dt>不同选择影响</dt><dd>扩大范围会显著拉长周期且与"热点"主题无关。</dd>
+  <dt>收敛结论</dt><dd>NG-1 + FR-014 + AC-017。</dd>
+  <dt>依据</dt><dd>issue 标题「支持自动热点链接」限定无线；约章 §7 优先级</dd>
+</dl>
+</article>
+
+<article class="q" id="q-014">
+<h3><span class="id">Q-014</span> 车型、固件与语言范围？ <span class="pill assumed">转假设 A-005</span></h3>
+<dl class="kv">
+  <dt>为什么问</dt><dd>决定 H3 设备矩阵与翻译工作量。</dd>
+  <dt>建议默认</dt><dd>BYD DiLink 3.0/4.0/5.x，Android 7.0+，11 种语言。</dd>
+  <dt>不同选择影响</dt><dd>扩大车型→真车资源与 S2 风险上升；缩语言→违反约章 §5.4。</dd>
+  <dt>收敛结论</dt><dd>NFR-006 / NFR-007；H3 矩阵 V-01…V-08。</dd>
+  <dt>依据</dt><dd>约章 §1、§5.4；<code>docs/COMPATIBILITY.md</code></dd>
+</dl>
+</article>
+</section>
+
+<section id="q-summary">
+<h2>4. 收敛汇总</h2>
+<table>
+  <caption>表 4-1 逐条状态</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">主题</th><th scope="col">状态</th><th scope="col">落点</th></tr></thead>
+  <tbody>
+    <tr><td>Q-001</td><td>"手动"的范围</td><td>已收敛</td><td>FR-003、BR-5</td></tr>
+    <tr><td>Q-002</td><td>四种后端</td><td>已收敛</td><td>FR-005、D-005</td></tr>
+    <tr><td>Q-003</td><td>默认值</td><td>假设 A-002 / D-002</td><td>FR-011、R-002</td></tr>
+    <tr><td>Q-004</td><td>触发源</td><td>已收敛</td><td>FR-002、NG-2</td></tr>
+    <tr><td>Q-005</td><td>失败是否弹窗</td><td>已收敛</td><td>FR-007、NFR-011</td></tr>
+    <tr><td>Q-006</td><td>重试预算</td><td>假设 A-003</td><td>NFR-002、AC-008</td></tr>
+    <tr><td>Q-007</td><td>风险等级</td><td>已收敛</td><td>R-001…R-008</td></tr>
+    <tr><td>Q-008</td><td>凭据存储</td><td>已收敛</td><td>NFR-004、D-2/D-3</td></tr>
+    <tr><td>Q-009</td><td>冒连风险</td><td>已收敛</td><td>NFR-005、FR-008</td></tr>
+    <tr><td>Q-010</td><td>首次是否自动</td><td>已收敛</td><td>FR-004、BR-5</td></tr>
+    <tr><td>Q-011</td><td>无 ADB 降级</td><td>已收敛</td><td>G-4、FR-002、V-07</td></tr>
+    <tr><td>Q-012</td><td>休眠唤醒定义</td><td>假设 A-004</td><td>FR-009</td></tr>
+    <tr><td>Q-013</td><td>USB 范围</td><td>已收敛</td><td>NG-1、FR-014</td></tr>
+    <tr><td>Q-014</td><td>车型/固件/语言</td><td>假设 A-005</td><td>NFR-006/007、附录 A</td></tr>
+  </tbody>
+</table>
+<p><strong>未收敛问题：0 条。</strong></p>
+</section>
+
+<section id="q-assumptions">
+<h2>5. 假设登记</h2>
+<p>假设不是"随便填的默认"，每条都有依据与失效影响；H1 批准即成为基线，后续变更走 CR。</p>
+<table>
+  <thead><tr><th scope="col">ID</th><th scope="col">假设</th><th scope="col">依据</th><th scope="col">不成立的影响</th></tr></thead>
+  <tbody>
+    <tr><td class="id">A-001</td><td>"手动"仅指车机侧</td><td>人类原话 + 现有设置流程</td><td>扩展到 iPhone 侧即不可实现</td></tr>
+    <tr><td class="id">A-002</td><td>首次成功后默认开启自动连接</td><td>默认关闭使功能等于不存在</td><td>SM-001 不可达；需人类接受</td></tr>
+    <tr><td class="id">A-003</td><td>≤5 次 / ≤150 s / 退避 ≥2 s</td><td>沿用既有常量</td><td>体验或成功率失衡</td></tr>
+    <tr><td class="id">A-004</td><td>唤醒不含进程被杀恢复</td><td>Android 后台限制</td><td>需常驻服务，触及功耗/权限</td></tr>
+    <tr><td class="id">A-005</td><td>DiLink 3/4/5 + Android 7.0+</td><td>约章 §1、兼容性文档</td><td>扩大范围需更多真车资源</td></tr>
+    <tr><td class="id">A-006</td><td>首选缺失且仅 1 台候选时不自动改连</td><td>安全优先</td><td>便利性下降，但避免误连</td></tr>
+    <tr><td class="id">A-007</td><td>不新增权限/组件</td><td>现有权限已覆盖触发</td><td>若需新权限须 DECISION-REQUEST</td></tr>
+    <tr><td class="id">A-008</td><td>真车验收由人类完成</td><td>约章 §3</td><td>无替代方案，是发布门槛</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="q-decisions">
+<h2>6. H1 决策请求</h2>
+<table>
+  <thead><tr><th scope="col">ID</th><th scope="col">决策</th><th scope="col">建议</th><th scope="col">备选</th><th scope="col">影响</th></tr></thead>
+  <tbody>
+    <tr><td class="id">D-001</td><td>develop 基线</td><td>人类确认后从 <code>main@615b32c</code> 建 <code>develop</code> 并加保护</td><td>继续以 main 为基线</td><td>约章 §9 前置条件；本轮分支已按 feat/ 命名</td></tr>
+    <tr><td class="id">D-002</td><td>自动连接默认值</td><td>首次成功后默认开启</td><td>保持默认关闭</td><td>决定 SM-001 是否可达；属行为变更</td></tr>
+    <tr><td class="id">D-003</td><td>H3 验收人与设备</td><td>指定 3 台 BYD（DiLink 3/4/5）+ 2 台 iPhone</td><td>由验收人自定</td><td>缺此项 H3 无法排期</td></tr>
+    <tr><td class="id">D-004</td><td>原型 required</td><td>required</td><td>not required（按文字 AC 走）</td><td>影响 H1 走查工作量与交互歧义风险</td></tr>
+    <tr><td class="id">D-005</td><td>首发后端范围</td><td>MANUAL 验收 + WIFI_P2P/EXISTING_WIFI 回归</td><td>四后端全部验收</td><td>影响真车资源与排期</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="q-change">
+<h2>7. 变更记录</h2>
+<table>
+  <thead><tr><th scope="col">版本</th><th scope="col">日期</th><th scope="col">变更</th></tr></thead>
+  <tbody><tr><td>v0.1.0</td><td>2026-10-31</td><td>首版：两轮 14 问、10 事实回答、4 转假设（共 8 条假设）、0 未决、5 决策请求。</td></tr></tbody>
+</table>
+<footer>
+  <p>KAR-02-Analyst · v0.1.0 · 分支 <code>feat/KAR-3-auto-hotspot-connect</code></p>
+</footer>
+</section>
+
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAR-3 自动热点连接 · 交互原型 v0.1.0</title>
+<style>
+  :root {
+    --bg:#0d1117; --panel:#161b22; --panel-2:#1c232c; --line:#2d3540;
+    --fg:#e6edf3; --muted:#9aa7b4; --accent:#3d9bfd; --accent-2:#1f6feb;
+    --ok:#3fb950; --warn:#d29922; --danger:#f85149; --chip:#21262d;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); color:var(--fg); }
+  body { font:14px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  a { color:var(--accent); }
+  .app { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; }
+  /* ---- sidebar ---- */
+  aside { background:var(--panel); border-right:1px solid var(--line); padding:18px 14px 28px; }
+  aside h1 { font-size:16px; margin:0 0 2px; }
+  aside .ver { color:var(--muted); font-size:12px; margin-bottom:14px; }
+  .navlabel { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:16px 0 6px; }
+  .scn { display:block; width:100%; text-align:left; background:transparent; color:var(--fg); border:1px solid transparent; border-radius:6px; padding:7px 9px; margin:3px 0; cursor:pointer; font:inherit; }
+  .scn:hover { background:var(--panel-2); }
+  .scn[aria-current="true"] { background:#1f6feb22; border-color:#1f6feb66; }
+  .scn .sid { font:600 11px/1.4 ui-monospace,Menlo,monospace; color:var(--accent); display:block; }
+  .scn .st { font-size:13px; }
+  .legend { margin-top:16px; padding:10px; border:1px dashed var(--line); border-radius:6px; font-size:12px; color:var(--muted); }
+  /* ---- main ---- */
+  main { padding:18px 22px 40px; min-width:0; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .toolbar .left { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .toolbar .title { font-weight:600; }
+  .btn { font:inherit; color:var(--fg); background:var(--chip); border:1px solid var(--line); border-radius:6px; padding:7px 12px; cursor:pointer; }
+  .btn:hover { border-color:#4b5663; }
+  .btn.primary { background:var(--accent-2); border-color:var(--accent-2); }
+  .btn.danger { border-color:#6e2b28; color:#ffb4ae; }
+  .btn[aria-pressed="true"] { background:#1f6feb33; border-color:var(--accent); }
+  .badge { font-size:11px; padding:2px 8px; border-radius:999px; background:#1f6feb22; border:1px solid #1f6feb66; color:#9cd0ff; }
+  .badge.fake { background:#d2992222; border-color:#d2992266; color:#e8c266; }
+  /* ---- head unit ---- */
+  .unit-wrap { max-width:1000px; }
+  .unit { position:relative; background:#05070a; border:10px solid #232a33; border-radius:16px; padding:0; overflow:hidden; box-shadow:0 12px 34px #0008; }
+  .unit::after { content:""; position:absolute; inset:0; pointer-events:none; border-radius:6px; box-shadow:inset 0 0 60px #0006; }
+  .unitbar { display:flex; justify-content:space-between; align-items:center; padding:8px 16px; background:#0a0e13; border-bottom:1px solid #1d232b; font-size:12px; color:#c7d2dd; }
+  .unitbar .r { display:flex; gap:10px; align-items:center; }
+  .screen { display:none; min-height:470px; padding:22px 26px; background:radial-gradient(1200px 500px at 20% -10%, #10202f 0%, #070b10 60%); }
+  .screen.active { display:block; }
+  h2.sh { font-size:24px; margin:0 0 4px; }
+  p.sub { color:var(--muted); margin:0 0 18px; }
+  .card { background:#10161d; border:1px solid #26303b; border-radius:10px; padding:16px 18px; margin:12px 0; }
+  .card h3 { margin:0 0 8px; font-size:16px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .big-actions { margin-top:20px; display:flex; gap:10px; flex-wrap:wrap; }
+  .btn.lg { padding:11px 20px; font-size:15px; }
+  .status-dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .dot-ok { background:var(--ok); } .dot-warn { background:var(--warn); } .dot-err { background:var(--danger); } .dot-run { background:var(--accent); }
+  .steps { list-style:none; padding:0; margin:14px 0 0; }
+  .steps li { display:grid; grid-template-columns:26px minmax(0,1fr) auto; gap:10px; align-items:center; padding:9px 0; border-bottom:1px solid #1d232b; }
+  .steps li:last-child { border-bottom:0; }
+  .mark { width:22px; height:22px; border-radius:50%; border:1px solid var(--line); display:grid; place-items:center; font-size:12px; color:var(--muted); }
+  .steps li.done .mark { background:#12351f; border-color:#2c6b3c; color:#6fe08a; }
+  .steps li.run .mark { border-color:var(--accent); color:var(--accent); }
+  .steps li.pending { opacity:.55; }
+  .steps .why { color:var(--muted); font-size:12px; display:block; }
+  .device { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border:1px solid #26303b; border-radius:8px; margin:8px 0; background:#0d131a; }
+  .device .nm { font-weight:600; }
+  .device .meta { color:var(--muted); font-size:12px; }
+  .device.disabled { opacity:.45; }
+  .notice { border-left:4px solid var(--accent); background:#0f1a26; padding:10px 14px; border-radius:6px; margin:12px 0; }
+  .notice.warn { border-left-color:var(--warn); background:#1d1808; }
+  .notice.err { border-left-color:var(--danger); background:#210d0d; }
+  .notice.ok { border-left-color:var(--ok); background:#0c1c11; }
+  .notice b { display:block; margin-bottom:2px; }
+  .toggle { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:11px 0; border-bottom:1px solid #1d232b; }
+  .toggle:last-child { border-bottom:0; }
+  .toggle .t { font-weight:600; }
+  .toggle .d { color:var(--muted); font-size:12px; }
+  .switch { width:44px; height:24px; border-radius:999px; background:#303a45; position:relative; flex:0 0 auto; border:1px solid #3a4550; }
+  .switch::after { content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#8b97a4; transition:transform .15s ease; }
+  .switch.on { background:#1f6feb; border-color:#1f6feb; }
+  .switch.on::after { transform:translateX(20px); background:#fff; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 0; }
+  .chip { font-size:12px; border:1px solid var(--line); border-radius:999px; padding:2px 9px; color:var(--muted); }
+  .carplay { background:linear-gradient(135deg,#101821,#0a0f15); border:1px solid #26303b; border-radius:10px; height:250px; display:grid; grid-template-columns:2fr 1fr; gap:10px; padding:10px; }
+  .cp-main { border-radius:8px; background:linear-gradient(160deg,#15304a,#0b1724); display:grid; place-items:center; color:#8fb8da; font-size:13px; }
+  .cp-side { display:grid; gap:10px; grid-template-rows:1fr 1fr; }
+  .cp-side div { border-radius:8px; background:#0f1922; border:1px solid #1e2b38; display:grid; place-items:center; color:#6f8ea8; font-size:12px; }
+  /* ---- annotation ---- */
+  .ann { display:none; }
+  body.review .ann { display:inline-grid; place-items:center; position:absolute; transform:translate(-50%,-50%); width:20px; height:20px; border-radius:50%; background:#f0b429; color:#111; font:700 11px/1 solid ui-monospace,monospace; z-index:5; box-shadow:0 0 0 2px #0006; pointer-events:none; }
+  .anchor { position:relative; }
+  aside.revpanel { background:#141a21; border-left:1px solid var(--line); border-right:0; display:none; }
+  body.review + .app aside.revpanel, body.review .app aside.revpanel { display:block; }
+  .app.reviewed { grid-template-columns:220px minmax(0,1fr) 300px; }
+  .revpanel h2 { font-size:14px; margin:0 0 6px; }
+  .revpanel .kv { font-size:12px; color:var(--muted); }
+  .rev { border:1px solid var(--line); border-radius:6px; padding:9px 10px; margin:9px 0; background:#10161d; }
+  .rev .n { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; background:#f0b429; color:#111; font:700 11px/1 monospace; margin-right:6px; }
+  .rev .t { font-weight:600; font-size:12px; }
+  .rev .m { color:var(--muted); font-size:12px; }
+  footer.doc { max-width:1000px; margin-top:18px; padding-top:12px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; }
+  .skip { position:absolute; left:-9999px; }
+  .skip:focus { left:12px; top:12px; z-index:99; background:#fff; color:#000; padding:8px 12px; border-radius:6px; }
+  :focus-visible { outline:3px solid #79b8ff; outline-offset:2px; }
+  @media (max-width:1100px) {
+    .app, .app.reviewed { grid-template-columns:1fr; }
+    aside { border-right:0; border-bottom:1px solid var(--line); }
+    aside.revpanel { border-left:0; border-top:1px solid var(--line); }
+    .screen { padding:16px; min-height:0; }
+    .carplay { grid-template-columns:1fr; height:auto; }
+  }
+  @media print {
+    aside, .toolbar { display:none; }
+    .app { display:block; }
+    .screen { display:block !important; break-after:page; }
+    body { background:#fff; color:#000; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#screen">跳到原型画面</a>
+
+<div class="app" id="app">
+  <aside aria-label="场景目录">
+    <h1>自动热点连接 · 原型</h1>
+    <div class="ver">v0.1.0 · 需求文档 v0.1.0 · H1 未批准</div>
+    <div class="navlabel">场景目录</div>
+    <nav id="nav"></nav>
+    <div class="legend">
+      演示数据，固定假设备（iPhone 15 Pro / 家人 iPhone），不连接任何真实后端，不含真实用户数据。<br>
+      键盘：Tab 移动，Enter 触发。
+    </div>
+  </aside>
+
+  <main>
+    <div class="toolbar">
+      <div class="left">
+        <span class="title" id="crumb">SC-001 · Home · 首次使用</span>
+        <span class="badge" id="statechip">empty</span>
+        <span class="badge fake">演示数据</span>
+      </div>
+      <div class="left">
+        <button class="btn" id="replay" type="button">重放本场景</button>
+        <button class="btn" id="review" type="button" aria-pressed="false">评审模式：关</button>
+      </div>
+    </div>
+
+    <div class="unit-wrap">
+      <div class="unit" role="region" aria-label="车机屏幕模拟">
+        <div class="unitbar">
+          <span>DiPlay · BYD DiLink（演示）</span>
+          <span class="r">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 3 8 7h2v6h4V7h2l-4-4Zm-7 9v6h14v-6h-2v4H7v-4H5Z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9a14 14 0 0 1 18 0M6 12.5a9.5 9.5 0 0 1 12 0M9.5 16a5 5 0 0 1 5 0"/><circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>
+            <span>08:42</span>
+          </span>
+        </div>
+
+        <div id="screen">
+
+          <!-- SC-001 -->
+          <section class="screen active" id="sc-001" aria-labelledby="h-001">
+            <h2 class="sh" id="h-001">欢迎使用 DiPlay</h2>
+            <p class="sub">还没有选择 iPhone。首次配对需要你确认一次，之后每次上车都会自动连接。</p>
+            <div class="card anchor" data-sc="SC-001" data-ann="1">
+              <span class="ann">1</span>
+              <h3>尚未选择 iPhone</h3>
+              <p style="color:var(--muted);margin:0">DiPlay 只会连接你在下一步选定的那台设备。</p>
+            </div>
+            <div class="card anchor" data-sc="SC-001" data-ann="2">
+              <span class="ann">2</span>
+              <h3>首次配对的三件事</h3>
+              <ul style="margin:6px 0 0;padding-left:20px;color:#c9d5e0">
+                <li>在 iPhone 上把蓝牙与 Wi-Fi 打开</li>
+                <li>在车机设置里打开内置热点（5 GHz 更好）</li>
+                <li>在 DiPlay 里选择你的 iPhone</li>
+              </ul>
+            </div>
+            <div class="big-actions">
+              <button class="btn primary lg" type="button" data-go="sc-002">选择 iPhone</button>
+              <button class="btn lg" type="button" data-go="sc-009">打开设置</button>
+            </div>
+          </section>
+
+          <!-- SC-002 -->
+          <section class="screen" id="sc-002" aria-labelledby="h-002">
+            <h2 class="sh" id="h-002">选择你的 iPhone</h2>
+            <p class="sub">首次配对必须由你确认；之后 DiPlay 不再询问。</p>
+            <div class="card anchor" data-sc="SC-002" data-ann="1">
+              <span class="ann">1</span>
+              <div class="device">
+                <div><div class="nm">iPhone 15 Pro</div><div class="meta">已配对 · 当前已连接</div></div>
+                <button class="btn primary" type="button" data-go="sc-003" data-pick="iPhone 15 Pro">选择</button>
+              </div>
+              <div class="device anchor" data-sc="SC-002" data-ann="2">
+                <span class="ann">2</span>
+                <div><div class="nm">家人的 iPhone 13</div><div class="meta">已配对 · 未连接</div></div>
+                <button class="btn" type="button" data-go="sc-003" data-pick="家人的 iPhone 13">选择</button>
+              </div>
+              <div class="device disabled">
+                <div><div class="nm">BYD 车机蓝牙</div><div class="meta">不是 iPhone，不显示</div></div>
+              </div>
+            </div>
+            <div class="notice" role="note">只有已与车机蓝牙配对的 iPhone 会出现在这里。不认识的设备不会自动连接。</div>
+            <div class="big-actions">
+              <button class="btn" type="button" data-go="sc-001">返回</button>
+              <button class="btn" type="button" data-go="sc-009">去设置</button>
+            </div>
+          </section>
+
+          <!-- SC-003 -->
+          <section class="screen" id="sc-003" aria-labelledby="h-003">
+            <h2 class="sh" id="h-003">正在连接 <span id="pick-name-1">iPhone 15 Pro</span></h2>
+            <p class="sub">首次连接：准备车机热点 → 通过蓝牙发送网络信息 → 等待 iPhone 加入。</p>
+            <div class="card">
+              <ol class="steps" id="steps-003">
+                <li data-step="0"><span class="mark">1</span><span>准备车机热点<span class="why">读取已保存的热点信息</span></span><span class="why">进行中</span></li>
+                <li data-step="1" class="pending"><span class="mark">2</span><span>通过蓝牙发送网络信息<span class="why">只发给已配对的这台 iPhone</span></span><span class="why">等待</span></li>
+                <li data-step="2" class="pending"><span class="mark">3</span><span>等待 iPhone 加入 Wi-Fi<span class="why">最长 30 秒</span></span><span class="why">等待</span></li>
+                <li data-step="3" class="pending"><span class="mark">4</span><span>建立 CarPlay 会话<span class="why">认证不可跳过</span></span><span class="why">等待</span></li>
+              </ol>
+            </div>
+            <div class="notice ok" id="done-003" hidden><b>连接成功</b>已进入 CarPlay。下次上车会自动完成这些步骤。</div>
+            <div class="big-actions">
+              <button class="btn lg" type="button" data-go="sc-005" id="go-005" disabled>进入 CarPlay</button>
+              <button class="btn lg" type="button" data-go="sc-001">取消</button>
+            </div>
+          </section>
+
+          <!-- SC-004 -->
+          <section class="screen" id="sc-004" aria-labelledby="h-004">
+            <h2 class="sh" id="h-004">正在自动连接</h2>
+            <p class="sub">已记住 iPhone 15 Pro。你不需要点任何按钮。</p>
+            <div class="card anchor" data-sc="SC-004" data-ann="1">
+              <span class="ann">1</span>
+              <div class="row"><span class="status-dot dot-run" aria-hidden="true"></span><strong>车辆上电后自动开始</strong></div>
+              <ol class="steps" id="steps-004">
+                <li data-step="0"><span class="mark">1</span><span>准备车机热点<span class="why">热点已开启，直接使用</span></span><span class="why">进行中</span></li>
+                <li data-step="1" class="pending"><span class="mark">2</span><span>寻找首选 iPhone<span class="why">只找 iPhone 15 Pro</span></span><span class="why">等待</span></li>
+                <li data-step="2" class="pending"><span class="mark">3</span><span>发送网络信息并等待加入<span class="why">失败会自动重试，最多 5 次</span></span><span class="why">等待</span></li>
+                <li data-step="3" class="pending"><span class="mark">4</span><span>建立 CarPlay 会话</span><span class="why">等待</span></li>
+              </ol>
+            </div>
+            <div class="notice" id="auto-note-004">自动会话最多尝试 5 次、总计 150 秒；超时会停下来告诉你原因，不会一直转圈。</div>
+            <div class="big-actions">
+              <button class="btn" type="button" data-go="sc-005">模拟连接成功</button>
+              <button class="btn" type="button" data-go="sc-006">模拟热点失败</button>
+              <button class="btn" type="button" data-go="sc-007">模拟 iPhone 不可达</button>
+              <button class="btn danger" type="button" data-go="sc-010">取消自动连接</button>
+            </div>
+          </section>
+
+          <!-- SC-005 -->
+          <section class="screen" id="sc-005" aria-labelledby="h-005">
+            <div class="row" style="justify-content:space-between">
+              <div><h2 class="sh" id="h-005">CarPlay 已连接</h2><p class="sub" style="margin:0">iPhone 15 Pro · 内置车机热点 · 5 GHz</p></div>
+              <span class="badge" style="background:#12351f;border-color:#2c6b3c;color:#8fe3a4">自动连接成功</span>
+            </div>
+            <div class="carplay" role="img" aria-label="CarPlay 画面示意（占位）">
+              <div class="cp-main">CarPlay 画面（示意，非真实截图）</div>
+              <div class="cp-side"><div>地图</div><div>音乐</div></div>
+            </div>
+            <div class="notice ok" style="margin-top:14px"><b>下次不用你动手</b>车辆上电、休眠唤醒或这台 iPhone 回到车内时，DiPlay 会自动连回来。</div>
+            <div class="big-actions">
+              <button class="btn" type="button" data-go="sc-009">自动连接设置</button>
+              <button class="btn" type="button" data-go="sc-004">断开并模拟重新连接</button>
+              <button class="btn danger" type="button" data-go="sc-010">关闭自动连接</button>
+            </div>
+          </section>
+
+          <!-- SC-006 -->
+          <section class="screen" id="sc-006" aria-labelledby="h-006">
+            <h2 class="sh" id="h-006">车机热点未开启</h2>
+            <p class="sub">自动连接已停止，你的设置没有被改动。</p>
+            <div class="notice warn anchor" data-sc="SC-006" data-ann="1">
+              <span class="ann">1</span>
+              <b>本车固件不允许 DiPlay 自动打开热点</b>
+              在车机设置里打开内置热点后，回到这里点“重试”。已尝试 1 次，用时 6 秒，未消耗重试预算。
+            </div>
+            <div class="card anchor" data-sc="SC-006" data-ann="2">
+              <span class="ann">2</span>
+              <h3>下一步</h3>
+              <ol style="margin:6px 0 0;padding-left:20px;color:#c9d5e0">
+                <li>打开车机设置 → 网络 → 内置热点</li>
+                <li>选择 5 GHz（如果有）并保持开启</li>
+                <li>回到 DiPlay 点“重试”</li>
+              </ol>
+            </div>
+            <div class="big-actions">
+              <button class="btn primary lg" type="button" data-go="sc-004">重试</button>
+              <button class="btn lg" type="button">打开车机热点设置</button>
+              <button class="btn lg" type="button" data-go="sc-001">稍后</button>
+            </div>
+            <p style="color:var(--muted);font-size:12px;margin-top:14px">不会弹全屏对话框，也不会覆盖倒车影像。</p>
+          </section>
+
+          <!-- SC-007 -->
+          <section class="screen" id="sc-007" aria-labelledby="h-007">
+            <h2 class="sh" id="h-007">没有找到 iPhone 15 Pro</h2>
+            <p class="sub">自动重试已停止：共 5 次、用时 2 分 11 秒。</p>
+            <div class="notice err anchor" data-sc="SC-007" data-ann="1">
+              <span class="ann">1</span>
+              <b>蓝牙已连接，但 iPhone 没有加入车机 Wi-Fi</b>
+              可能原因：iPhone 的 Wi-Fi 被关闭、自动加入被拒绝，或车机热点与手机不在同一频段。
+            </div>
+            <div class="card anchor" data-sc="SC-007" data-ann="2">
+              <span class="ann">2</span>
+              <h3>可以怎么做</h3>
+              <div class="chips">
+                <span class="chip">检查 iPhone Wi-Fi 是否打开</span>
+                <span class="chip">忽略一次网络后重试</span>
+                <span class="chip">确认热点名与密码未变</span>
+              </div>
+            </div>
+            <div class="big-actions">
+              <button class="btn primary lg" type="button" data-go="sc-004">重试一次</button>
+              <button class="btn lg" type="button" data-go="sc-008">选择其他 iPhone</button>
+              <button class="btn lg" type="button" data-go="sc-009">自动连接设置</button>
+            </div>
+            <p style="color:var(--muted);font-size:12px;margin-top:14px">诊断会记录触发源、后端、阶段、尝试次数与总耗时，不含 SSID、口令或设备地址。</p>
+          </section>
+
+          <!-- SC-008 -->
+          <section class="screen" id="sc-008" aria-labelledby="h-008">
+            <h2 class="sh" id="h-008">找到多台已配对的 iPhone</h2>
+            <p class="sub">首选设备当前不可用。为避免连错，DiPlay 不会自己选。</p>
+            <div class="card anchor" data-sc="SC-008" data-ann="1">
+              <span class="ann">1</span>
+              <div class="device">
+                <div><div class="nm">家人的 iPhone 13</div><div class="meta">已配对 · 当前已连接</div></div>
+                <button class="btn" type="button" data-go="sc-003" data-pick="家人的 iPhone 13">连接这台</button>
+              </div>
+              <div class="device">
+                <div><div class="nm">iPhone 15 Pro（首选）</div><div class="meta">已配对 · 不在附近</div></div>
+                <button class="btn" type="button" disabled>连接这台</button>
+              </div>
+            </div>
+            <div class="notice warn" role="note">选择“家人的 iPhone 13”会把它设为新的首选设备，之后自动连接都会找它。可以随时在设置里改回。</div>
+            <div class="big-actions">
+              <button class="btn" type="button" data-go="sc-007">返回</button>
+              <button class="btn" type="button" data-go="sc-009">设置</button>
+            </div>
+          </section>
+
+          <!-- SC-009 -->
+          <section class="screen" id="sc-009" aria-labelledby="h-009">
+            <h2 class="sh" id="h-009">自动连接</h2>
+            <p class="sub">设置 → 连接 · 这些选项都只影响这台车机。</p>
+            <div class="card anchor" data-sc="SC-009" data-ann="1">
+              <span class="ann">1</span>
+              <div class="toggle">
+                <div><div class="t">自动连接 iPhone</div><div class="d">首次配对成功后默认开启；关闭后每次都要手动点 Connect phone</div></div>
+                <div class="switch on" role="img" aria-label="已开启"></div>
+              </div>
+              <div class="toggle">
+                <div><div class="t">打开 DiPlay 时连接</div><div class="d">没有开机自启权限时的兜底方式</div></div>
+                <div class="switch on" role="img" aria-label="已开启"></div>
+              </div>
+              <div class="toggle">
+                <div><div class="t">选定的 iPhone 重新连接蓝牙时</div><div class="d">部分车机限制后台启动，可能不生效</div></div>
+                <div class="switch on" role="img" aria-label="已开启"></div>
+              </div>
+              <div class="toggle">
+                <div><div class="t">默认连接方式</div><div class="d">无线 · 内置车机热点</div></div>
+                <span class="chip">无线 ›</span>
+              </div>
+              <div class="toggle">
+                <div><div class="t">自动打开车机热点</div><div class="d">需要本车授权与固件支持；不支持时仍会提示你手动打开</div></div>
+                <div class="switch on" role="img" aria-label="已开启"></div>
+              </div>
+            </div>
+            <div class="notice" role="note">切换语言后这些选项都必须存在（共 11 种语言，含阿拉伯语 RTL）。</div>
+            <div class="big-actions">
+              <button class="btn" type="button" data-go="sc-004">返回连接</button>
+              <button class="btn danger" type="button" data-go="sc-010">关闭自动连接并忘记设备</button>
+            </div>
+          </section>
+
+          <!-- SC-010 -->
+          <section class="screen" id="sc-010" aria-labelledby="h-010">
+            <h2 class="sh" id="h-010">关闭自动连接？</h2>
+            <p class="sub">关闭后不会删除任何已保存的热点或配对信息。</p>
+            <div class="card anchor" data-sc="SC-010" data-ann="1">
+              <span class="ann">1</span>
+              <h3>关闭后的行为</h3>
+              <ul style="margin:6px 0 0;padding-left:20px;color:#c9d5e0">
+                <li>车辆上电、休眠唤醒、iPhone 回到车内，都不再自动连接</li>
+                <li>打开 DiPlay 后仍需点一次 Connect phone</li>
+                <li>随时可以重新打开，不需要重新配对</li>
+              </ul>
+            </div>
+            <div class="card anchor" data-sc="SC-010" data-ann="2">
+              <span class="ann">2</span>
+              <div class="toggle">
+                <div><div class="t">同时忘记 iPhone 15 Pro</div><div class="d">下次必须重新选择并配对</div></div>
+                <div class="switch" role="img" aria-label="未开启"></div>
+              </div>
+            </div>
+            <div class="big-actions">
+              <button class="btn primary lg" type="button" data-go="sc-001">确认关闭</button>
+              <button class="btn lg" type="button" data-go="sc-009">取消</button>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+
+    <footer class="doc">
+      <p>原型 v0.1.0 · 对应需求分析文档 v0.1.0 · 分支 <code style="background:#161b22;padding:1px 5px;border-radius:4px">feat/KAR-3-auto-hotspot-connect</code> · H1 未批准，仅用于需求走查，不是最终视觉稿，不接后端，不含真实数据。</p>
+      <p>评审模式中的编号对应右侧标注；标注给出 SC、意图、映射的 FR/AC 与预期的失败/空/成功状态。</p>
+    </footer>
+  </main>
+
+  <aside class="revpanel" id="revpanel" aria-label="评审标注">
+    <h2>评审标注 · <span id="rev-sc">SC-001</span></h2>
+    <p class="kv">打开评审模式后，画面上的黄色编号对应这里的条目。走查时请按“意图”判断是否说清了要求，而不是看画得好不好。</p>
+    <div id="revlist"></div>
+    <div class="rev"><span class="t">走查记录（H1 时填写）</span><div class="m">走不通：<br>缺失状态：<br>与 AC 冲突：<br>未决问题：</div></div>
+  </aside>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SCENES = [
+    { id: "sc-001", code: "SC-001", title: "Home · 首次使用", state: "empty" },
+    { id: "sc-002", code: "SC-002", title: "首次配对 · 选择 iPhone", state: "empty" },
+    { id: "sc-003", code: "SC-003", title: "首次配对 · 连接进度", state: "loading" },
+    { id: "sc-004", code: "SC-004", title: "自动连接 · 冷启动零交互", state: "loading" },
+    { id: "sc-005", code: "SC-005", title: "连接成功 · Home 状态", state: "success" },
+    { id: "sc-006", code: "SC-006", title: "失败 · 车机热点未开", state: "error" },
+    { id: "sc-007", code: "SC-007", title: "失败 · iPhone 不可达", state: "error" },
+    { id: "sc-008", code: "SC-008", title: "冲突 · 多台已配对 iPhone", state: "error" },
+    { id: "sc-009", code: "SC-009", title: "设置 · 自动连接分组", state: "default" },
+    { id: "sc-010", code: "SC-010", title: "撤销 · 关闭自动连接", state: "confirm" }
+  ];
+
+  var NOTES = {
+    "sc-001": [
+      "首次使用必须是空状态：不能默认选中任何设备，也不能直接尝试连接。地图：FR-004 / AC-005。",
+      "把首次要做的三件事写清楚，避免车主以为“自动”等于“不用配对”。地图：FR-003 边界 / BR-5。"
+    ],
+    "sc-002": [
+      "首次配对显式选择；列表只来自已配对的 iPhone，不显示其他蓝牙设备。地图：FR-001、FR-004 / AC-001。",
+      "多台设备时并列展示，不预选；选中后写入首选设备。地图：FR-008 / AC-010。"
+    ],
+    "sc-003": [
+      "首次连接展示阶段与原因；认证不可跳过，也不因首次而额外要求凭据。地图：FR-005、FR-010 / AC-006、AC-013。",
+      "成功后才允许进入 CarPlay，失败必须能回到可操作状态。地图：FR-007 / AC-009。"
+    ],
+    "sc-004": [
+      "自动会话不能出现任何需要点按的选择；阶段可见并在 3 秒内更新。地图：FR-002、FR-003、FR-010 / AC-002、AC-004、AC-013。",
+      "重试预算与超时必须在界面上有交代，不能无限转圈。地图：FR-006 / AC-008。"
+    ],
+    "sc-005": [
+      "成功后明确告诉车主“下次自动”，否则用户不知道功能已生效。地图：FR-001、FR-010 / AC-001、AC-013。",
+      "状态徽标只用于辅助，不靠颜色单独传达（文字同时出现）。地图：NFR-010。"
+    ],
+    "sc-006": [
+      "热点不可自动开启时立即停止，不进入重试循环；说明原因而不是错误码。地图：FR-005(d)、FR-006、FR-007 / AC-007、AC-008。",
+      "给出一步到位的入口与“重试”，不使用全屏阻塞对话框。地图：FR-007、NFR-011 / AC-009、AC-025。"
+    ],
+    "sc-007": [
+      "预算耗尽后必须显示尝试次数与耗时，让车主知道“已经尽力”。地图：FR-006、NFR-002 / AC-008。",
+      "给出可执行的原因与下一步；不得降级认证，也不得自动改连其他设备。地图：NFR-005、FR-008 / AC-010、AC-020。"
+    ],
+    "sc-008": [
+      "多设备冲突时不静默选择；首选设备置灰并说明不可用原因。地图：FR-008、BR-2 / AC-010、AC-011。",
+      "选择其他设备会改变首选，必须提前告知影响。地图：FR-001、FR-004 / AC-005。"
+    ],
+    "sc-009": [
+      "所有自动连接控件位于唯一分组；总开关与子项的依赖关系清楚。地图：FR-011、NFR-007 / AC-014。",
+      "说明会限制行为的条件（后台启动、固件支持），避免“开了却没生效”的误解。地图：FR-002 降级阶梯。"
+    ],
+    "sc-010": [
+      "关闭自动连接是显式确认，且明确不会删除凭据；关闭后手动路径仍可用。地图：FR-012 / AC-015。",
+      "“忘记设备”是独立选项，默认不勾选，避免误删。地图：FR-012、BR-3 / AC-015、AC-025。"
+    ]
+  };
+
+  var nav = document.getElementById("nav");
+  var screens = Array.prototype.slice.call(document.querySelectorAll(".screen"));
+  var crumb = document.getElementById("crumb");
+  var chip = document.getElementById("statechip");
+  var current = "sc-001";
+  var timers = [];
+
+  SCENES.forEach(function (s) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "scn";
+    b.setAttribute("data-target", s.id);
+    b.innerHTML = '<span class="sid">' + s.code + '</span><span class="st">' + s.title + "</span>";
+    b.addEventListener("click", function () { show(s.id); });
+    nav.appendChild(b);
+  });
+
+  function clearTimers() {
+    timers.forEach(function (t) { clearInterval(t); clearTimeout(t); });
+    timers = [];
+  }
+
+  function show(id) {
+    clearTimers();
+    current = id;
+    screens.forEach(function (el) { el.classList.toggle("active", el.id === id); });
+    Array.prototype.forEach.call(nav.children, function (b) {
+      b.setAttribute("aria-current", b.getAttribute("data-target") === id ? "true" : "false");
+    });
+    var s = SCENES.filter(function (x) { return x.id === id; })[0];
+    crumb.textContent = s.code + " · " + s.title;
+    chip.textContent = s.state;
+    renderNotes(s.code);
+    document.getElementById("screen").scrollIntoView({ block: "nearest" });
+    resetScene(id);
+    var heading = document.querySelector("#" + id + " h2");
+    if (heading) { heading.setAttribute("tabindex", "-1"); heading.focus({ preventScroll: true }); }
+    if (location.hash !== "#" + id) { history.replaceState(null, "", "#" + id); }
+  }
+
+  function resetScene(id) {
+    if (id === "sc-003" || id === "sc-004") {
+      var list = document.getElementById(id === "sc-003" ? "steps-003" : "steps-004");
+      if (!list) return;
+      var items = Array.prototype.slice.call(list.children);
+      items.forEach(function (li, i) {
+        li.className = i === 0 ? "" : "pending";
+        var tail = li.lastElementChild;
+        if (tail) tail.textContent = i === 0 ? "进行中" : "等待";
+      });
+      var done = document.getElementById("done-003");
+      var go = document.getElementById("go-005");
+      if (done) done.hidden = true;
+      if (go) go.disabled = true;
+      var step = 0;
+      var t = setInterval(function () {
+        if (step < items.length - 1) {
+          items[step].className = "done";
+          items[step].lastElementChild.textContent = "完成";
+          step += 1;
+          items[step].className = "run";
+          items[step].lastElementChild.textContent = "进行中";
+        } else {
+          items[step].className = "done";
+          items[step].lastElementChild.textContent = "完成";
+          clearInterval(t);
+          if (done) done.hidden = false;
+          if (go) go.disabled = false;
+        }
+      }, 900);
+      timers.push(t);
+    }
+  }
+
+  function renderNotes(code) {
+    var box = document.getElementById("revlist");
+    document.getElementById("rev-sc").textContent = code;
+    var items = NOTES[current] || [];
+    box.innerHTML = "";
+    items.forEach(function (text, i) {
+      var d = document.createElement("div");
+      d.className = "rev";
+      d.innerHTML = '<span class="n">' + (i + 1) + "</span><span class=\"t\">" + text.split("地图：")[0] +
+        '</span><div class="m">' + (text.split("地图：")[1] || "") + "</div>";
+      box.appendChild(d);
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-go]");
+    if (!t) return;
+    e.preventDefault();
+    var pick = t.getAttribute("data-pick");
+    if (pick) {
+      Array.prototype.forEach.call(document.querySelectorAll("[id^='pick-name']"), function (el) {
+        el.textContent = pick;
+      });
+    }
+    show(t.getAttribute("data-go"));
+  });
+
+  var review = document.getElementById("review");
+  review.addEventListener("click", function () {
+    var on = document.body.classList.toggle("review");
+    document.getElementById("app").classList.toggle("reviewed", on);
+    review.setAttribute("aria-pressed", on ? "true" : "false");
+    review.textContent = "评审模式：" + (on ? "开" : "关");
+  });
+
+  document.getElementById("replay").addEventListener("click", function () {
+    resetScene(current);
+    renderNotes(current);
+  });
+
+  window.addEventListener("hashchange", function () {
+    var id = location.hash.replace("#", "");
+    if (document.getElementById(id)) show(id);
+  });
+
+  var initial = location.hash.replace("#", "");
+  show(document.getElementById(initial) ? initial : "sc-001");
+})();
+</script>
+</body>
+</html>
