@@ -6473,7 +6473,11 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         }
         AutoConnectSession.onStage(request.sessionId, AutoConnectStage.RESOLVING_TARGET)
         AirPlayPersistence.saveWirelessEnabled(this, true)
-        openProjection()
+        val projection = CarPlayScreen.intent(this)
+            .putExtra(AutoConnectLaunchToken.EXTRA_SESSION, request.sessionId)
+            .putExtra(AutoConnectLaunchToken.EXTRA_SESSION_TOKEN, AutoConnectLaunchToken.token)
+            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        OwnScreenStart.start(this, projection)
         refreshStatus()
     }
 

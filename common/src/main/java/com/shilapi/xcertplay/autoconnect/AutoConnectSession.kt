@@ -274,4 +274,8 @@ internal object AutoConnectSession {
 /** The process-local token that marks a launch as DiPlay's own automatic cold start. */
 internal object AutoConnectLaunchToken {
     val token: String = java.util.UUID.randomUUID().toString()
+
+    /** The automatic session handed to the CarPlay screen; only valid with [token]. */
+    const val EXTRA_SESSION = "com.shihab.diplay.AUTO_CONNECT_SESSION"
+    const val EXTRA_SESSION_TOKEN = "com.shihab.diplay.AUTO_CONNECT_SESSION_TOKEN"
 }

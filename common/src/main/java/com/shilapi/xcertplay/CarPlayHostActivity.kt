@@ -170,6 +170,11 @@ open class CarPlayHostActivity : ComponentActivity() {
     private var delayedDoubleSiri: PendingAssignedSiriDoublePress? = null
     private val legacySiriPresses = mutableSetOf<Triple<Int, Int, Int>>()
     private val startupRetryBudget = WirelessStartupRetryBudget()
+    /**
+     * The automatic session that owns this screen, or null for the manual path. Only a session that
+     * this process started can hand one over: the id travels with the process-local launch token.
+     */
+    internal var autoConnectSessionId: Long? = null
     private var startupRetryStopped = false
     private var startupRetryButton: View? = null
     private var startupFailureGeneration = -1
@@ -851,6 +856,7 @@ open class CarPlayHostActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        readAutoConnectSession(intent)
         if (CarPlayScreen.forwarded(this)) {
             forwarded = true
             return
@@ -1165,6 +1171,7 @@ open class CarPlayHostActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        readAutoConnectSession(intent)
         if (isIphoneUsbAttachment(intent)) {
             if (wirelessEnabled) {
                 if (menuOpen) cancelSettingsEdits()
@@ -5393,6 +5400,12 @@ open class CarPlayHostActivity : ComponentActivity() {
                     if (controllerGeneration != restartGeneration || activeAirPlaySession !== session || shuttingDown.get()) return@runOnUiThread
                     val firstFrame = startupRetryBudget.firstFrame(session, android.os.SystemClock.elapsedRealtime())
                     if (firstFrame) appendLog("Main video first frame rendered; cluster output may start")
+                    if (firstFrame) {
+                        // A rendered frame is the first proof the automatic session actually connected.
+                        autoConnectSessionId?.let { id ->
+                            com.shilapi.xcertplay.autoconnect.AutoConnectSession.onConnected(id, wirelessHotspotMode)
+                        }
+                    }
                     ensureClusterPresentation()
                     if (!firstFrame) return@runOnUiThread
                     mainHandler.postDelayed({
@@ -6054,6 +6067,18 @@ open class CarPlayHostActivity : ComponentActivity() {
         if (menuOpen) recoveryPendingAfterMenu = true
         if (shuttingDown.get() || menuOpen || handshakeResetInProgress || startupRetryStopped) return
         if (reconnectScheduled) return
+        // An automatic session spends its own 5-attempt / 150 s budget here (ADR-003, G-01).
+        val autoSession = autoConnectSessionId
+        if (autoSession != null && startupFailure != null && startupFailure.retryable) {
+            val permit = com.shilapi.xcertplay.autoconnect.AutoConnectSession.attemptPermit(autoSession)
+            if (permit == null) {
+                startupRetryStopped = true
+                startupRetryButton?.visibility = View.VISIBLE
+                setConnectionStage("$reason\n${getString(R.string.wireless_startup_retries_exhausted)}")
+                appendLog("automatic session $autoSession exhausted its retry budget retries=${startupRetryBudget.retries}")
+                return
+            }
+        }
         val startupDelay = if (startupFailure != null && startupFailure.retryable)
             startupRetryBudget.nextDelayMillis() else null
         if (startupFailure != null && startupDelay == null) {
@@ -6935,6 +6960,18 @@ open class CarPlayHostActivity : ComponentActivity() {
             WirelessStartupFailure.FIRST_TCP_TIMEOUT -> res.getString(R.string.first_tcp_timeout)
             WirelessStartupFailure.WIFI_DIRECT_BESIDE_HOTSPOT -> res.getString(R.string.wifi_direct_refused_beside_hotspot)
             else -> res.getString(R.string.status_failed, message)
+        }
+    }
+
+    /** Only DiPlay's own launch may hand a session over; an exported Activity is reachable by anyone. */
+    private fun readAutoConnectSession(intent: Intent?) {
+        intent ?: return
+        val token = intent.getStringExtra(com.shilapi.xcertplay.autoconnect.AutoConnectLaunchToken.EXTRA_SESSION_TOKEN)
+        val id = intent.getLongExtra(com.shilapi.xcertplay.autoconnect.AutoConnectLaunchToken.EXTRA_SESSION, 0L)
+        intent.removeExtra(com.shilapi.xcertplay.autoconnect.AutoConnectLaunchToken.EXTRA_SESSION)
+        intent.removeExtra(com.shilapi.xcertplay.autoconnect.AutoConnectLaunchToken.EXTRA_SESSION_TOKEN)
+        if (token == com.shilapi.xcertplay.autoconnect.AutoConnectLaunchToken.token && id > 0L) {
+            autoConnectSessionId = id
         }
     }
 

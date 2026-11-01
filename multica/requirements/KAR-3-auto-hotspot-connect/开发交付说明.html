@@ -76,10 +76,10 @@ nav a{color:var(--accent);text-decoration:none}
 <tr><td>FR-003 自动路径零交互</td><td><code>DiPlayActivity.startAutomaticConnection</code> 不走 <code>choosePhone()</code>、不走 <code>carHotspotOffDialog()</code>；失败进终态 + Home inline notice</td><td class="ok">已实现</td></tr>
 <tr><td>FR-004 首次 vs 后续互斥</td><td><code>AutoConnectGate.resolveTarget</code>：<code>NO_PREFERRED / PREFERRED / PREFERRED_INVALID</code>，首次仍由 <code>choosePhone()</code> 显式完成</td><td class="ok">已实现</td></tr>
 <tr><td>FR-005 四后端行为不变</td><td>未改任何 <code>CarHotspot*</code> / <code>*HotspotManager</code>；门禁只决定"是否允许自动准备"</td><td class="ok">未触碰</td></tr>
-<tr><td>FR-006 有界重试</td><td><code>AutoConnectBudget</code>：5 次 / 150 s / 2-4-8-16 s / 剩余 &lt;20 s 不再开新尝试；<code>attemptPermit()</code> 唯一计数点（G-07）</td><td class="warn">预算对象已实现并单测；宿主侧许可接入未实现（见 §8 D-1）</td></tr>
+<tr><td>FR-006 有界重试</td><td><code>AutoConnectBudget</code>：5 次 / 150 s / 2-4-8-16 s / 剩余 &lt;20 s 不再开新尝试；<code>attemptPermit()</code> 唯一计数点（G-07）</td><td class="ok">预算对象已实现并单测；宿主 <code>reconnectAfterLoss</code> 每次重启前调用 <code>AutoConnectSession.attemptPermit()</code>，返回 null 即停并显示"重试"（G-01 已接入，TC-046/047 仍待补自动化）</td></tr>
 <tr><td>FR-007 失败呈现</td><td><code>AutoConnectState.Failed</code> → Home inline notice（原因 + 第 n/N 次 + 已用秒数）；无 AlertDialog</td><td class="ok">已实现（无独立"重试"按钮，复用现有 Connect phone 入口，见 §8 D-4）</td></tr>
 <tr><td>FR-008 冲突不静默选</td><td>门禁 <code>NeedsChoice</code>：无首选 / 首选失效 / 多候选一律不连接任何设备；自动模式禁止回退选择</td><td class="ok">已实现</td></tr>
-<tr><td>FR-009 休眠唤醒</td><td><code>SleepWakeTrigger</code>：幂等注册、关闭注销、60 s 去抖、applicationContext、API 33+ <code>RECEIVER_NOT_EXPORTED</code></td><td class="warn">接收器与注册生命周期已实现；宿主"恢复既有会话"钩子未接入（见 §8 D-2）</td></tr>
+<tr><td>FR-009 休眠唤醒</td><td><code>SleepWakeTrigger</code>：幂等注册、关闭注销、60 s 去抖、applicationContext、API 33+ <code>RECEIVER_NOT_EXPORTED</code></td><td class="warn">接收器、注册生命周期与"无会话 → offer"已实现；"宿主存活断流 → 恢复"仍沿用既有 CarPlay 重连（未新增专用钩子，见 §8 D-2）</td></tr>
 <tr><td>FR-010 状态呈现</td><td><code>AutoConnectSurface.stageLabel</code> → Home 状态行；<code>attemptProgress</code> 单一资源三占位符</td><td class="ok">已实现（CarPlay 启动界面阶段文本未新增，沿用既有）</td></tr>
 <tr><td>FR-011 设置落位</td><td>唯一 <code>SettingsCategory.CONNECTION → SettingsSection.AUTOMATIC_CONNECTION</code>；新渲染器 <code>automaticConnectionSettings()</code>；总开关 <code>auto_connect_master</code>；热点控件按 ADR-009 从 BYD_ADB 卡片移入同卡片</td><td class="ok">已实现</td></tr>
 <tr><td>FR-012 关闭/撤销</td><td>总开关关闭 → <code>AutoConnectSession.cancel(OFF)</code> + 注销唤醒接收器；手动连接 → <code>cancel(MANUAL_TAKEOVER)</code></td><td class="ok">已实现</td></tr>
@@ -159,7 +159,7 @@ nav a{color:var(--accent);text-decoration:none}
 <h2 id="s5">5. 覆盖率与未覆盖项</h2>
 <table>
 <tr><th>维度</th><th>已实现</th><th>说明</th></tr>
-<tr><td>FR</td><td>12 / 14 完整，2 项部分</td><td>FR-006 宿主许可、FR-009 宿主恢复钩子未接入</td></tr>
+<tr><td>FR</td><td>13 / 14 完整，1 项部分</td><td>FR-009 的宿主恢复钩子未新增（沿用既有重连）</td></tr>
 <tr><td>NFR</td><td>7 / 11 有自动化证据</td><td>NFR-001 时延、NFR-008 长跑、NFR-010 真机无障碍、NFR-003 功耗采样只能 H3</td></tr>
 <tr><td>TC（本地 60）</td><td>约 30 条已落地并执行</td><td>合计断言来自 6 个测试类；其余见上表</td></tr>
 <tr><td>TC（H3 18）</td><td>0</td><td>真车未执行，不声称通过</td></tr>
@@ -189,8 +189,8 @@ nav a{color:var(--accent);text-decoration:none}
 <h2 id="s8">8. 已知问题、技术债与风险</h2>
 <table>
 <tr><th>ID</th><th>问题</th><th>影响</th><th>建议</th></tr>
-<tr><td>D-1</td><td><strong>宿主侧 150 s 许可未接入</strong>：<code>CarPlayHostActivity.reconnectAfterLoss</code> 未调用 <code>AutoConnectSession.attemptPermit()</code>，<code>autoConnectSessionId</code> 未随 Intent 传入 Host</td><td>AC-008 / G-01 只有预算对象证据，缺端到端；两套预算并存（R-010）仍开放</td><td>A4 退 Dev 补齐后再进 QA</td></tr>
-<tr><td>D-2</td><td>休眠唤醒只接入了"无会话 → 尝试 offer"，未接入"宿主存活但断流 → 恢复"</td><td>FR-009 部分；TC-049 未覆盖</td><td>随 D-1 一并补</td></tr>
+<tr><td>D-1</td><td>宿主侧许可已接入（<code>reconnectAfterLoss</code> 调 <code>attemptPermit</code>，sessionId 经内部令牌 extra 传入 Host），但 <strong>TC-046/TC-047 的自动化用例未落地</strong></td><td>行为已实现，缺 Host 侧回归测试；R-010 需测试兜住</td><td>A4 补 <code>WirelessStartupRecoveryTest</code> 两用例</td></tr>
+<tr><td>D-2</td><td>休眠唤醒只接入"无会话 → offer"；"宿主存活但断流 → 立即恢复"沿用既有重连与宿主预算</td><td>FR-009 部分；TC-049 未覆盖</td><td>A4 评估是否需要专用钩子</td></tr>
 <tr><td>D-3</td><td>本机 CI 无法取得全绿：① Rosetta/沙盒限制导致 Mockito inline mock 自 attach <code>EPERM</code>；② dl.google.com 的 Maven 传输间歇性 TLS 重置</td><td>未能贴出全量绿色 CI 输出；不属于代码失败</td><td>以 GitHub Actions（<code>.github/workflows/android.yml</code>）为准；本机已逐项验证编译、目标测试与公共树检查</td></tr>
 <tr><td>D-4</td><td>未新增独立"重试"按钮；Home 复用现有 <code>Connect phone</code> 按钮</td><td>FR-007 的"单一动作"语义部分满足</td><td>A4 决定是否补按钮</td></tr>
 <tr><td>D-5</td><td>SC-005 一次性 opt-in 提示未渲染（键与状态已实现）</td><td>成功后的告知缺 UI</td><td>随 D-4 补</td></tr>
