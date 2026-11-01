@@ -954,4 +954,15 @@
     <string name="cluster_projection_shape_description">При половине экрана скорость и состояние, которые панель обычно показывает, остаются рядом с картой; на весь экран карта занимает всю панель. DiPlay задаёт этот вид при каждом появлении карты CarPlay и иначе перекрывает вид, выбранный в машине. Требуется ADB по сети на головном устройстве.</string>
     <string name="settings_cluster_speedometer_album_color">Цвет альбома для фона спидометра</string>
     <string name="settings_cluster_speedometer_album_color_description">Плавно меняет фон на цвет рамки альбома. Сохраняет выбранную непрозрачность.</string>
+
+    <string name="settings_auto_connect_title">Подключаться автоматически</string>
+    <string name="settings_auto_connect_description">После первого успешного беспроводного подключения DiPlay сам переподключается к вашему iPhone. Это можно отключить в любой момент.</string>
+    <string name="settings_auto_connect_needs_master">Сначала включите автоматическое подключение.</string>
+    <string name="settings_auto_connect_enabled_notice">Автоматическое подключение включено. Его можно отключить в настройках.</string>
+    <string name="settings_auto_connect_stage_network">Подготовка точки доступа автомобиля…</string>
+    <string name="settings_auto_connect_stage_join">Ожидание подключения iPhone к Wi-Fi…</string>
+    <string name="settings_auto_connect_stage_connect">Запуск сеанса CarPlay…</string>
+    <string name="settings_auto_connect_attempt_progress">Попытка %1$d из %2$d · %3$d с</string>
+    <string name="settings_auto_connect_needs_choice">Доступно несколько iPhone. Выберите, к какому подключаться.</string>
+    <string name="settings_auto_connect_retry_single">Повторить</string>
 </resources>

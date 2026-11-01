@@ -60,9 +60,11 @@ class BydAdbSettingsUiTest {
     @Test fun hotspotAndVehicleSettingsHaveOneOwnerWithoutNavigationServices() {
         render(LocalAdb.Access.READY)
         val advanced = advancedVehicleData()
-        val page = LinearLayout(activity).apply { addView(controls); addView(advanced) }
+        val page = LinearLayout(activity).apply { addView(controls); addView(renderAutomaticConnection()); addView(advanced) }
         assertEquals(View.VISIBLE, controls.visibility)
-        assertEquals(1, switches(controls).size)
+        // G-12: the ADB card no longer owns the hotspot switch; the automatic card does.
+        assertEquals(0, switches(controls).size)
+        assertEquals(1, hotspotSwitches(renderAutomaticConnection()))
         assertFalse(CarHotspotSettings.enabled(activity))
         for (id in listOf(R.string.car_battery_for_the_iphone, R.string.wheel_speed_for_tunnels,
             R.string.video_while_parked, R.string.auto_car_hotspot_title)) {
@@ -76,7 +78,9 @@ class BydAdbSettingsUiTest {
         render(LocalAdb.Access.NOT_APPROVED)
         assertEquals(View.VISIBLE, controls.visibility)
         assertTrue(labels(controls).contains(activity.getString(R.string.adb_not_approved)))
-        assertEquals(1, switches(controls).size)
+        // G-12: without ADB approval the opt-in still lives in the automatic card, never in the ADB card.
+        assertEquals(0, switches(controls).size)
+        assertEquals(1, hotspotSwitches(renderAutomaticConnection()))
         assertTrue(labels(advancedVehicleData()).contains(activity.getString(R.string.check_adb_access)))
     }
 
@@ -87,7 +91,8 @@ class BydAdbSettingsUiTest {
             AirPlayPersistence.saveWirelessHotspotMode(activity, mode)
             render(LocalAdb.Access.READY)
             assertEquals(if (mode == WirelessHotspotMode.MANUAL) View.VISIBLE else View.GONE, controls.visibility)
-            assertEquals(mode == WirelessHotspotMode.MANUAL, labels(controls).contains(activity.getString(R.string.auto_car_hotspot_title)))
+            assertEquals(mode == WirelessHotspotMode.MANUAL,
+                labels(renderAutomaticConnection()).contains(activity.getString(R.string.auto_car_hotspot_title)))
             val vehicleSwitches = switches(advancedVehicleData())
             assertEquals(setOf(
                 R.string.car_battery_for_the_iphone, R.string.wheel_speed_for_tunnels,
@@ -181,6 +186,16 @@ class BydAdbSettingsUiTest {
         ReflectionHelpers.callInstanceMethod<Unit>(activity, "advancedVehicleData",
             ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, it))
     }
+    /** G-12: render the AUTOMATIC_CONNECTION card, which now owns the moved hotspot control. */
+    private fun renderAutomaticConnection() = LinearLayout(activity).also {
+        ReflectionHelpers.callInstanceMethod<Unit>(activity, "automaticConnectionSettings",
+            ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, it))
+    }
+
+    private fun hotspotSwitches(view: View) = switches(view).count {
+        it.contentDescription == activity.getString(R.string.auto_car_hotspot_title)
+    }
+
     private fun render(access: LocalAdb.Access) {
         ReflectionHelpers.callInstanceMethod<Unit>(activity, "renderBydAdbControls",
             ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, controls),

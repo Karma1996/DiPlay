@@ -14,6 +14,8 @@ import android.util.Log
 class PhoneBluetoothReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != BluetoothDevice.ACTION_ACL_CONNECTED ||
+            // The master switch is checked before anything else so "off" really means off (DA-003).
+            !com.shilapi.xcertplay.autoconnect.AutoConnectPreferences.masterEnabled(context) ||
             !DiPlayPreferences.connectOnPhoneBluetooth(context) ||
             CarPlayBackgroundSession.hasSession()) return
         val selected = DiPlayPreferences.phoneAddress(context) ?: return

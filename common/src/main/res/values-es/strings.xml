@@ -954,4 +954,15 @@
     <string name="cluster_projection_shape_description">La pantalla partida mantiene junto al mapa la velocidad y el estado que el panel muestra normalmente; la pantalla completa deja que el mapa ocupe todo el panel. DiPlay fija la forma cada vez que aparece el mapa de CarPlay, que de lo contrario anula la forma elegida en el coche. Requiere ADB por red en la unidad principal.</string>
     <string name="settings_cluster_speedometer_album_color">Usar el color del álbum en el fondo del velocímetro</string>
     <string name="settings_cluster_speedometer_album_color_description">Iguala el color del borde del álbum con transiciones suaves. Conserva la opacidad elegida.</string>
+
+    <string name="settings_auto_connect_title">Conectar automáticamente</string>
+    <string name="settings_auto_connect_description">DiPlay se reconecta solo a tu iPhone tras la primera conexión inalámbrica correcta. Puedes desactivarlo cuando quieras.</string>
+    <string name="settings_auto_connect_needs_master">Activa primero la conexión automática.</string>
+    <string name="settings_auto_connect_enabled_notice">La conexión automática está activada. Puedes desactivarla en Ajustes.</string>
+    <string name="settings_auto_connect_stage_network">Preparando el punto de acceso del coche…</string>
+    <string name="settings_auto_connect_stage_join">Esperando a que tu iPhone se una al Wi-Fi…</string>
+    <string name="settings_auto_connect_stage_connect">Iniciando la sesión de CarPlay…</string>
+    <string name="settings_auto_connect_attempt_progress">Intento %1$d de %2$d · %3$d s</string>
+    <string name="settings_auto_connect_needs_choice">Hay más de un iPhone disponible. Elige el que quieres conectar.</string>
+    <string name="settings_auto_connect_retry_single">Reintentar</string>
 </resources>

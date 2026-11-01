@@ -21,6 +21,8 @@ class BootReceiver : BroadcastReceiver() {
         val launch = Intent(context, DiPlayActivity::class.java).apply {
             action = Intent.ACTION_MAIN
             addCategory(Intent.CATEGORY_LAUNCHER)
+            // Marks DiPlay's own cold start; an outside app cannot guess this per-process token.
+            putExtra(EXTRA_COLD_START, com.shilapi.xcertplay.autoconnect.AutoConnectLaunchToken.token)
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
@@ -36,7 +38,8 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
-    private companion object {
-        const val TAG = "xcertplay-boot"
+    companion object {
+        const val EXTRA_COLD_START = "com.shihab.diplay.COLD_START_AUTOCONNECT"
+        private const val TAG = "xcertplay-boot"
     }
 }

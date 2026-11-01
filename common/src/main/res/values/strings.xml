@@ -1057,4 +1057,15 @@
     <string name="cluster_projection_shape_description">Half screen keeps the speed and status readouts the cluster normally shows beside the map; full screen lets the map fill the cluster. DiPlay sets the shape whenever the CarPlay map appears, which otherwise overrides the shape picked on the car. Needs ADB over network on the head unit.</string>
     <string name="settings_cluster_speedometer_album_color">Use album color for speedometer background</string>
     <string name="settings_cluster_speedometer_album_color_description">Match the album frame color with smooth transitions. Keeps the selected opacity.</string>
+
+    <string name="settings_auto_connect_title">Connect automatically</string>
+    <string name="settings_auto_connect_description">DiPlay reconnects to your iPhone by itself after the first successful wireless connection. You can turn this off at any time.</string>
+    <string name="settings_auto_connect_needs_master">Turn on automatic connection first.</string>
+    <string name="settings_auto_connect_enabled_notice">Automatic connection is on. You can turn it off in Settings.</string>
+    <string name="settings_auto_connect_stage_network">Preparing the car hotspot…</string>
+    <string name="settings_auto_connect_stage_join">Waiting for your iPhone to join the Wi-Fi…</string>
+    <string name="settings_auto_connect_stage_connect">Starting the CarPlay session…</string>
+    <string name="settings_auto_connect_attempt_progress">Attempt %1$d of %2$d · %3$d s</string>
+    <string name="settings_auto_connect_needs_choice">More than one iPhone is available. Choose the one to connect.</string>
+    <string name="settings_auto_connect_retry_single">Try again</string>
 </resources>

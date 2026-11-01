@@ -1044,4 +1044,15 @@
     <string name="cluster_projection_shape_description">Mezza schermata mantiene accanto alla mappa la velocità e lo stato che il quadro strumenti mostra normalmente; schermo intero lascia che la mappa occupi tutto il quadro. DiPlay imposta questa forma ogni volta che appare la mappa di CarPlay, che altrimenti annulla la forma scelta nell’auto. Richiede ADB in rete sull’unità principale.</string>
     <string name="settings_cluster_speedometer_album_color">Usa il colore dell’album per lo sfondo del tachimetro</string>
     <string name="settings_cluster_speedometer_album_color_description">Abbina il colore della cornice dell’album con transizioni fluide. Mantiene l’opacità selezionata.</string>
+
+    <string name="settings_auto_connect_title">Connetti automaticamente</string>
+    <string name="settings_auto_connect_description">DiPlay si riconnette da solo al tuo iPhone dopo la prima connessione wireless riuscita. Puoi disattivarlo in qualsiasi momento.</string>
+    <string name="settings_auto_connect_needs_master">Attiva prima la connessione automatica.</string>
+    <string name="settings_auto_connect_enabled_notice">La connessione automatica è attiva. Puoi disattivarla nelle impostazioni.</string>
+    <string name="settings_auto_connect_stage_network">Preparazione dell\'hotspot dell\'auto…</string>
+    <string name="settings_auto_connect_stage_join">In attesa che l\'iPhone si unisca al Wi-Fi…</string>
+    <string name="settings_auto_connect_stage_connect">Avvio della sessione CarPlay…</string>
+    <string name="settings_auto_connect_attempt_progress">Tentativo %1$d di %2$d · %3$d s</string>
+    <string name="settings_auto_connect_needs_choice">C\'è più di un iPhone disponibile. Scegli quello da collegare.</string>
+    <string name="settings_auto_connect_retry_single">Riprova</string>
 </resources>

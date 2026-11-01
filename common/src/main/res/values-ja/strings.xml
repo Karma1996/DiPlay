@@ -1056,4 +1056,15 @@
     <string name="cluster_projection_shape_description">小画面ではメーター本来の車速や状態表示が地図の横に残ります。全画面では地図がメーター全体を覆います。CarPlayの地図が表示されるとDiPlayがこの形態を設定するため、クルマ側で選んだナビモードは上書きされます。車載機のネットワークADBが必要です。</string>
     <string name="settings_cluster_speedometer_album_color">速度計の背景にアルバムの色を使用</string>
     <string name="settings_cluster_speedometer_album_color_description">アルバムの枠の色に滑らかに切り替わります。選択した不透明度は維持されます。</string>
+
+    <string name="settings_auto_connect_title">自動で接続</string>
+    <string name="settings_auto_connect_description">最初のワイヤレス接続に成功すると、DiPlay は iPhone に自動で再接続します。いつでもオフにできます。</string>
+    <string name="settings_auto_connect_needs_master">先に自動接続をオンにしてください。</string>
+    <string name="settings_auto_connect_enabled_notice">自動接続がオンになりました。設定でオフにできます。</string>
+    <string name="settings_auto_connect_stage_network">車のホットスポットを準備しています…</string>
+    <string name="settings_auto_connect_stage_join">iPhone が Wi-Fi に参加するのを待っています…</string>
+    <string name="settings_auto_connect_stage_connect">CarPlay セッションを開始しています…</string>
+    <string name="settings_auto_connect_attempt_progress">試行 %1$d/%2$d · %3$d 秒</string>
+    <string name="settings_auto_connect_needs_choice">iPhone が複数あります。接続する iPhone を選んでください。</string>
+    <string name="settings_auto_connect_retry_single">再試行</string>
 </resources>

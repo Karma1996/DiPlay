@@ -63,11 +63,15 @@ internal enum class DefaultConnectionMode(val key: String) {
 }
 
 internal object DiPlayPreferences {
-    private fun prefs(context: Context) = context.getSharedPreferences("diplay", Context.MODE_PRIVATE)
-    fun phoneAddress(context: Context): String? = prefs(context).getString("phone_address", null)
-    fun phoneName(context: Context): String = prefs(context).getString("phone_name", null) ?: "Your iPhone"
+    const val PREFS = "diplay"
+    const val KEY_PHONE_ADDRESS = "phone_address"
+    const val KEY_PHONE_NAME = "phone_name"
+
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    fun phoneAddress(context: Context): String? = prefs(context).getString(KEY_PHONE_ADDRESS, null)
+    fun phoneName(context: Context): String = prefs(context).getString(KEY_PHONE_NAME, null) ?: "Your iPhone"
     fun savePhone(context: Context, address: String, name: String) {
-        prefs(context).edit().putString("phone_address", address).putString("phone_name", name).apply()
+        prefs(context).edit().putString(KEY_PHONE_ADDRESS, address).putString(KEY_PHONE_NAME, name).apply()
     }
     fun defaultConnectionMode(context: Context) =
         DefaultConnectionMode.fromKey(prefs(context).getString("default_connection_mode", null))

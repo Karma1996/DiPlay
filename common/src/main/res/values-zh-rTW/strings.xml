@@ -1014,4 +1014,15 @@
     <string name="cluster_projection_shape_description">半螢幕會在儀表板地圖旁保留儀表原本的車速與狀態資訊；全螢幕則讓地圖佔滿整個儀表板。CarPlay 地圖出現時 DiPlay 會設定該形態，否則會覆蓋你在車機上選好的導航模式。需要車機已授權網路 ADB。</string>
     <string name="settings_cluster_speedometer_album_color">速度表背景使用專輯顏色</string>
     <string name="settings_cluster_speedometer_album_color_description">平滑過渡至專輯邊框的顏色，並保留所選的不透明度。</string>
+
+    <string name="settings_auto_connect_title">自動連線</string>
+    <string name="settings_auto_connect_description">首次無線連線成功後，DiPlay 會自動重新連線你的 iPhone。你可以隨時關閉。</string>
+    <string name="settings_auto_connect_needs_master">請先開啟自動連線。</string>
+    <string name="settings_auto_connect_enabled_notice">已開啟自動連線。你可以在設定中關閉。</string>
+    <string name="settings_auto_connect_stage_network">正在準備車機熱點…</string>
+    <string name="settings_auto_connect_stage_join">正在等待 iPhone 加入 Wi-Fi…</string>
+    <string name="settings_auto_connect_stage_connect">正在建立 CarPlay 工作階段…</string>
+    <string name="settings_auto_connect_attempt_progress">第 %1$d/%2$d 次 · 已用 %3$d 秒</string>
+    <string name="settings_auto_connect_needs_choice">偵測到多台 iPhone，請選擇要連線的一台。</string>
+    <string name="settings_auto_connect_retry_single">重試</string>
 </resources>

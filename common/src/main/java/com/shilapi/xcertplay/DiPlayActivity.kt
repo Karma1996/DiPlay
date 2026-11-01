@@ -52,6 +52,27 @@ import com.shilapi.xcertplay.airplay.CarPlayClusterDisplay
 import com.shilapi.xcertplay.airplay.CarPlayDisplayScale
 import com.shilapi.xcertplay.airplay.ClusterSpeedometerOverlay
 import com.shilapi.xcertplay.airplay.ClusterTurnCardOverlay
+import com.shilapi.xcertplay.autoconnect.AutoConnectBudget
+import com.shilapi.xcertplay.autoconnect.AutoConnectConnector
+import com.shilapi.xcertplay.autoconnect.AutoConnectDecision
+import com.shilapi.xcertplay.autoconnect.AutoConnectDiagnostics
+import com.shilapi.xcertplay.autoconnect.AutoConnectEnvironment
+import com.shilapi.xcertplay.autoconnect.AutoConnectFailure
+import com.shilapi.xcertplay.autoconnect.AutoConnectLaunchToken
+import com.shilapi.xcertplay.autoconnect.AutoConnectPreferences
+import com.shilapi.xcertplay.autoconnect.AutoConnectRequest
+import com.shilapi.xcertplay.autoconnect.AutoConnectSession
+import com.shilapi.xcertplay.autoconnect.AutoConnectStage
+import com.shilapi.xcertplay.autoconnect.AutoConnectState
+import com.shilapi.xcertplay.autoconnect.AutoConnectSurface
+import com.shilapi.xcertplay.autoconnect.AutoConnectTier
+import com.shilapi.xcertplay.autoconnect.AutoConnectTrigger
+import com.shilapi.xcertplay.autoconnect.AutoHotspotControl
+import com.shilapi.xcertplay.autoconnect.AutoHotspotPlacement
+import com.shilapi.xcertplay.autoconnect.BondedIphone
+import com.shilapi.xcertplay.autoconnect.CancelReason
+import com.shilapi.xcertplay.autoconnect.HotspotState
+import com.shilapi.xcertplay.autoconnect.SleepWakeTrigger
 import com.shilapi.xcertplay.backup.SettingsBackupCodec
 import com.shilapi.xcertplay.backup.SettingsBackupEndpoint
 import com.shilapi.xcertplay.backup.SettingsBackupServer
@@ -265,6 +286,18 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     private var pausedForAdbSwitchChange = false
     private var updatingAdbSwitches = false
     private val adbSwitches = mutableMapOf<Int, Pair<Switch, () -> Boolean>>()
+    /** Last ADB probe result, so the automatic card can place the hotspot control without asking twice. */
+    private var bydAdbAccess: LocalAdb.Access? = null
+    internal var autoConnectSessionId: Long? = null
+    private var autoConnectState: AutoConnectState = AutoConnectState.Idle
+    private var lastAutoConnectTrigger: AutoConnectTrigger? = null
+    private var lastAutoConnectTriggerAt = 0L
+    private var pendingColdStart = false
+    private val autoConnectListener: (AutoConnectState) -> Unit = { state ->
+        autoConnectState = state
+        if (state.terminal) autoConnectSessionId = null
+        if (page == "home" && status != null) refreshStatus()
+    }
     private var hotspotStartupResult: CarHotspotTethering.Result? = null
     @Volatile private var startupHotspotCancelled = false
     @Volatile private var vehicleProbeGeneration = 0
@@ -414,6 +447,11 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             ?: if (setupError == null && SetupGuide.shouldOpenOnLaunch(SetupGuide.seen(this),
                     DiPlayPreferences.phoneAddress(this) != null)) "setup" else "home"
         render()
+        AutoConnectSession.attach(applicationContext, ActivityAutoConnectConnector(this))
+        AutoConnectSession.addListener(autoConnectListener)
+        AutoConnectPreferences.ensureMigrated(this)
+        refreshAutoConnectWakeReceiver()
+        pendingColdStart = consumeColdStartIntent(intent)
         scheduleAutomaticVehicleValidation()
         handleWirelessRecovery()
         if (consumeBluetoothAutoConnectIntent(intent)) {
@@ -421,7 +459,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 initialLaunch = false
                 startCarHotspotOnLaunch()
             }
-            handler.post { connect(true) }
+            // Still an automatic trigger: it must pass the same gate and budget as the other three.
+            handler.post { offerAutoConnect(AutoConnectTrigger.PHONE_BLUETOOTH) }
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -448,7 +487,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 initialLaunch = false
                 startCarHotspotOnLaunch()
             }
-            handler.post { connect(true) }
+            // Still an automatic trigger: it must pass the same gate and budget as the other three.
+            handler.post { offerAutoConnect(AutoConnectTrigger.PHONE_BLUETOOTH) }
         }
     }
     private fun consumeBluetoothAutoConnectIntent(intent: Intent): Boolean {
@@ -548,10 +588,12 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         if (initialLaunch) {
             initialLaunch = false
             startCarHotspotOnLaunch()
-            if (setupError == null && !CarPlayBackgroundSession.hasSession() &&
-                DiPlayPreferences.autoConnect(this) && requestedPage(intent) == null && page != "setup") {
-                handler.post { connect(DiPlayPreferences.autoConnectWireless(this)) }
-            }
+        }
+        // The four automatic triggers converge here: no block dialog, and every path still asks the gate.
+        if (requestedPage(intent) == null && page != "setup" && !CarPlayBackgroundSession.hasSession()) {
+            val trigger = if (pendingColdStart) AutoConnectTrigger.COLD_START else AutoConnectTrigger.APP_OPENED
+            pendingColdStart = false
+            handler.post { offerAutoConnect(trigger) }
         }
     }
     override fun onPause() {
@@ -566,6 +608,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     }
 
     override fun onDestroy() {
+        AutoConnectSession.removeListener(autoConnectListener)
         settingsSearchPopup?.dismiss()
         appearanceObserverRemoval?.invoke()
         appearanceObserverRemoval = null
@@ -1777,63 +1820,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         }
         filteredSection(content, SettingsSection.AUTOMATIC_CONNECTION,
             getString(R.string.automatic_connection), R.drawable.ic_dp_automation) { card ->
-            toggle(card, getString(R.string.connect_when_diplay_opens), getString(R.string.default_connection_description), DiPlayPreferences.autoConnect(this)) { DiPlayPreferences.saveAutoConnect(this, it) }
-            toggle(card, getString(R.string.connect_when_iphone_bluetooth_connects),
-                getString(R.string.connect_when_iphone_bluetooth_connects_description),
-                DiPlayPreferences.connectOnPhoneBluetooth(this)) { enabled ->
-                DiPlayPreferences.saveConnectOnPhoneBluetooth(this, enabled)
-                if (enabled && Build.VERSION.SDK_INT >= 31 &&
-                    checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                    bluetoothAutoConnectPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                } else if (enabled && DiPlayPreferences.phoneAddress(this) == null) choosePhone()
-            }
-            val connectionModes = DefaultConnectionMode.entries
-            choice(card, getString(R.string.default_connection_mode), listOf(
-                getString(R.string.default_connection_last_used),
-                getString(R.string.default_connection_wireless),
-                getString(R.string.default_connection_usb)
-            ), connectionModes.indexOf(DiPlayPreferences.defaultConnectionMode(this)), reconnects = false) {
-                DiPlayPreferences.saveDefaultConnectionMode(this, connectionModes[it])
-            }
-            adbToggle(card, R.string.open_after_the_car_starts,
-                R.string.availability_depends_on_your_head_unit_s_startup_settings,
-                read = { AirPlayPersistence.loadAutoStartOnBoot(this) },
-                needsAdb = { CarHotspotSettings.enabled(this) &&
-                    AirPlayPersistence.loadWirelessHotspotMode(this) == WirelessHotspotMode.MANUAL },
-                permissions = { listOf(CarHotspotSetup.Permission.BOOT_LAUNCH) }) {
-                AirPlayPersistence.saveAutoStartOnBoot(this, it)
-            }
-            val autoConfirmActive = UsbPermissionSetup.Permission.ACCESSIBILITY.granted(this)
-            toggle(
-                card,
-                getString(R.string.usb_auto_confirm_title),
-                getString(R.string.usb_auto_confirm_subtitle),
-                autoConfirmActive,
-            ) { enabled ->
-                if (enabled) promptEnableUsbAutoConfirm()
-                else {
-                    if (!UsbAutoConfirmService.openSettings(this)) toast(getString(R.string.wheel_keys_no_settings))
-                    render()
-                }
-            }
-            if (!autoConfirmActive) {
-                card.addView(
-                    button(
-                        getString(R.string.btn_auto_apply_permissions),
-                        true,
-                    ) {
-                        autoApplyPermissions()
-                    },
-                    matchButton(8, 54),
-                )
-            } else {
-                card.addView(label(getString(R.string.usb_auto_confirm_active_hint), 14, READY).apply {
-                    setPadding(0, dp(4), 0, dp(8))
-                })
-            }
-            card.addView(button(getString(R.string.boot_start_repair), false) { repairBootStart() }, matchButton(6, 56))
-            card.addView(label(getString(R.string.boot_start_repair_desc), 14, MUTED).apply { setPadding(0, dp(8), 0, dp(6)) })
-            card.addView(button(chooseIphoneTitle(), false) { choosePhone() }, matchButton(12, 60))
+            automaticConnectionSettings(card)
         }
         filteredSection(content, SettingsSection.USB_CONNECTION,
             getString(R.string.settings_usb_connection), R.drawable.ic_dp_connection) { card ->
@@ -2889,17 +2876,22 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             Log.i("DiPlay-Hotspot", "settings eligibility: byd=true adb=$access visible=${CarHotspotSettings.visible(true, access)}")
             runOnUiThread {
                 if (bydAdbControls !== controls || isFinishing || isDestroyed) return@runOnUiThread
+                val changed = bydAdbAccess != access
+                bydAdbAccess = access
                 if (CarHotspotSettings.visible(true, access)) {
                     controls.visibility = View.VISIBLE
                     renderBydAdbControls(controls, access)
                 }
+                // The automatic card decides the hotspot control from this probe; redraw it once.
+                if (changed && page == "settings" && settingsCategory == SettingsCategory.CONNECTION) render()
             }
         }, "diplay-hotspot-adb-check").start()
     }
 
     private fun renderBydAdbControls(controls: LinearLayout, access: LocalAdb.Access) {
         controls.removeAllViews()
-        adbSwitches.keys.retainAll(setOf(R.string.open_after_the_car_starts))
+        bydAdbAccess = access
+        adbSwitches.keys.retainAll(setOf(R.string.open_after_the_car_starts, R.string.auto_car_hotspot_title))
         adbStatus = null
         controls.visibility = if (CarHotspotSettings.visible(true, access)) View.VISIBLE else View.GONE
         if (controls.visibility == View.GONE) return
@@ -2908,21 +2900,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             return
         }
         section(controls, getString(R.string.byd_adb_features), R.drawable.ic_dp_permissions) { card ->
-            if (AirPlayPersistence.loadWirelessHotspotMode(this) == WirelessHotspotMode.MANUAL) {
-                adbToggle(card, R.string.auto_car_hotspot_title, R.string.auto_car_hotspot_description,
-                    read = { CarHotspotSettings.enabled(this) },
-                    permissions = {
-                        buildList {
-                            add(CarHotspotSetup.Permission.HOTSPOT)
-                            if (AirPlayPersistence.loadAutoStartOnBoot(this@DiPlayActivity)) {
-                                add(CarHotspotSetup.Permission.BOOT_LAUNCH)
-                            }
-                        }
-                    }) {
-                    CarHotspotSettings.setEnabled(this, it)
-                    if (!it) startupHotspotCancelled = true
-                }
-            }
+            // The automatic hotspot control lives in the AUTOMATIC_CONNECTION card (ADR-009).
             adbStatus = label(getString(if (access == LocalAdb.Access.READY)
                 R.string.adb_access_ready else R.string.adb_not_approved), 14, MUTED).also(card::addView)
             val allReady = UsbPermissionSetup.snapshot(this).values.all { it }
@@ -5728,6 +5706,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     }
 
     private fun connect(wireless: Boolean) {
+        // A user-initiated connection wins over an automatic one, which must stop silently (ADR-003).
+        if (wireless) AutoConnectSession.cancel(CancelReason.MANUAL_TAKEOVER)
         startupHotspotCancelled = true
         if (wireless && pendingCarHotspotSetup) { toast(getString(R.string.save_your_hotspot_details_in_connection_setup_first)); page = "connection"; render(); return }
         if (setupError != null) { toast(setupError!!); return }
@@ -5865,15 +5845,20 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         val wired = HomeCardTransport.wired(running, AirPlayPersistence.loadWirelessEnabled(this))
         homeCardTitle?.text = getString(if (wired) R.string.home_usb_carplay else R.string.wireless_carplay)
         homeConnectionHint?.visibility = if (wired) View.GONE else View.VISIBLE
+        val autoState = autoConnectState
+        val autoStage = (autoState as? AutoConnectState.Running)?.stage
         status?.text = when {
             setupError != null -> getString(R.string.setup_needs_attention)
             CarPlayBackgroundSession.active -> getString(R.string.carplay_connected)
             running -> getString(R.string.connecting_to_your_iphone)
+            autoStage != null -> getString(AutoConnectSurface.stageLabel(autoStage))
             DiPlayPreferences.phoneAddress(this) != null -> "${getString(R.string.status_ready_for_prefix)}${DiPlayPreferences.phoneName(this)}"
             else -> getString(R.string.ready_when_you_are)
         }
         homeLastProblem?.apply {
-            val line = if (CarPlayBackgroundSession.active) null else LastConnectionProblem.homeLine(this@DiPlayActivity)
+            val autoLine = autoConnectNoticeLine(autoState)
+            val line = if (CarPlayBackgroundSession.active) null
+            else autoLine ?: LastConnectionProblem.homeLine(this@DiPlayActivity)
             visibility = if (line == null) View.GONE else View.VISIBLE
             if (line != null) text = line
         }
@@ -5887,6 +5872,25 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         refreshReconnectBar()
         refreshReadiness()
     }
+    /**
+     * The boot launch carries a process-local token, like the Bluetooth wake-up: DiPlayActivity is
+     * exported, so an extra alone must never be able to start an automatic connection.
+     */
+    private fun consumeColdStartIntent(intent: Intent): Boolean {
+        val requested = intent.getStringExtra(BootReceiver.EXTRA_COLD_START) == AutoConnectLaunchToken.token
+        intent.removeExtra(BootReceiver.EXTRA_COLD_START)
+        return requested
+    }
+
+    /** The automatic path's inline notice: text only, never a dialog (ADR-004). */
+    private fun autoConnectNoticeLine(state: AutoConnectState): String? = when (state) {
+        is AutoConnectState.Failed -> getString(AutoConnectSurface.failureLabel(state.failure)) + " · " +
+            AutoConnectSurface.attemptProgress(this, state.attempt, AutoConnectBudget.MAX_ATTEMPTS, state.elapsedMillis)
+        is AutoConnectState.NeedsChoice -> getString(AutoConnectSurface.choiceLabel(state.reason))
+        is AutoConnectState.Blocked -> getString(R.string.connection_help_bluetooth_unusable)
+        else -> null
+    }
+
     private fun authorizeClusterRouting() {
         val app = applicationContext
         Thread({
@@ -5991,6 +5995,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         appendLine("Session: ${if (CarPlayBackgroundSession.active) "active" else if (CarPlayBackgroundSession.hasSession()) "connecting" else "stopped"}")
         appendLine("CarPlay screen: ${CarPlayScreen.report(appContext)}")
         appendLine(PhoneWakeDiagnostics.report(appContext))
+        appendLine(AutoConnectDiagnostics.report(appContext))
         appendLine("Head-unit board: ${Build.BOARD}; hardware: ${Build.HARDWARE}; build: ${Build.DISPLAY}")
         appendLine()
         appendLine(BluetoothDiagnosticSnapshot.report(appContext))
@@ -6257,6 +6262,220 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         parent.addView(dependent)
     }
 
+
+    /**
+     * The AUTOMATIC_CONNECTION card (design §11.1): one master switch, its four children, the
+     * default connection mode and the single "open the car hotspot automatically" control.
+     *
+     * Extracted as its own renderer so the position tests can render exactly this card (G-12) and
+     * so the hotspot control has one owner instead of being drawn by the ADB card as well.
+     */
+    private fun automaticConnectionSettings(card: LinearLayout) {
+        AutoConnectPreferences.ensureMigrated(this)
+        val master = AutoConnectPreferences.masterEnabled(this)
+        toggle(card, getString(R.string.settings_auto_connect_title),
+            getString(R.string.settings_auto_connect_description), master) { enabled ->
+            AutoConnectPreferences.setMaster(this, enabled, byUser = true)
+            if (enabled) {
+                refreshAutoConnectWakeReceiver()
+                if (DiPlayPreferences.phoneAddress(this) == null) choosePhone()
+            } else {
+                AutoConnectSession.cancel(CancelReason.OFF)
+                SleepWakeTrigger.unregister(applicationContext)
+            }
+            render()
+        }
+        if (!master) {
+            card.addView(label(getString(R.string.settings_auto_connect_needs_master), 14, MUTED))
+        }
+        toggle(card, getString(R.string.connect_when_diplay_opens), getString(R.string.default_connection_description),
+            DiPlayPreferences.autoConnect(this), enabled = master) { enabled ->
+            DiPlayPreferences.saveAutoConnect(this, enabled)
+            if (enabled) AutoConnectPreferences.setMaster(this, true, byUser = true)
+            refreshAutoConnectWakeReceiver()
+        }
+        toggle(card, getString(R.string.connect_when_iphone_bluetooth_connects),
+            getString(R.string.connect_when_iphone_bluetooth_connects_description),
+            DiPlayPreferences.connectOnPhoneBluetooth(this), enabled = master) { enabled ->
+            DiPlayPreferences.saveConnectOnPhoneBluetooth(this, enabled)
+            if (enabled) AutoConnectPreferences.setMaster(this, true, byUser = true)
+            if (enabled && Build.VERSION.SDK_INT >= 31 &&
+                checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                bluetoothAutoConnectPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
+            } else if (enabled && DiPlayPreferences.phoneAddress(this) == null) choosePhone()
+            refreshAutoConnectWakeReceiver()
+        }
+        val connectionModes = DefaultConnectionMode.entries
+        choice(card, getString(R.string.default_connection_mode), listOf(
+            getString(R.string.default_connection_last_used),
+            getString(R.string.default_connection_wireless),
+            getString(R.string.default_connection_usb)
+        ), connectionModes.indexOf(DiPlayPreferences.defaultConnectionMode(this)), reconnects = false) {
+            DiPlayPreferences.saveDefaultConnectionMode(this, connectionModes[it])
+        }
+        adbToggle(card, R.string.open_after_the_car_starts,
+            R.string.availability_depends_on_your_head_unit_s_startup_settings,
+            read = { AirPlayPersistence.loadAutoStartOnBoot(this) },
+            needsAdb = { CarHotspotSettings.enabled(this) &&
+                AirPlayPersistence.loadWirelessHotspotMode(this) == WirelessHotspotMode.MANUAL },
+            permissions = { listOf(CarHotspotSetup.Permission.BOOT_LAUNCH) }) {
+            AirPlayPersistence.saveAutoStartOnBoot(this, it)
+            refreshAutoConnectWakeReceiver()
+        }
+        automaticHotspotControl(card)
+        val autoConfirmActive = UsbPermissionSetup.Permission.ACCESSIBILITY.granted(this)
+        toggle(
+            card,
+            getString(R.string.usb_auto_confirm_title),
+            getString(R.string.usb_auto_confirm_subtitle),
+            autoConfirmActive,
+        ) { enabled ->
+            if (enabled) promptEnableUsbAutoConfirm()
+            else {
+                if (!UsbAutoConfirmService.openSettings(this)) toast(getString(R.string.wheel_keys_no_settings))
+                render()
+            }
+        }
+        if (!autoConfirmActive) {
+            card.addView(
+                button(
+                    getString(R.string.btn_auto_apply_permissions),
+                    true,
+                ) {
+                    autoApplyPermissions()
+                },
+                matchButton(8, 54),
+            )
+        } else {
+            card.addView(label(getString(R.string.usb_auto_confirm_active_hint), 14, READY).apply {
+                setPadding(0, dp(4), 0, dp(8))
+            })
+        }
+        card.addView(button(getString(R.string.boot_start_repair), false) { repairBootStart() }, matchButton(6, 56))
+        card.addView(label(getString(R.string.boot_start_repair_desc), 14, MUTED).apply { setPadding(0, dp(8), 0, dp(6)) })
+        card.addView(button(chooseIphoneTitle(), false) { choosePhone() }, matchButton(12, 60))
+    }
+
+    /**
+     * The automatic hotspot control has exactly one owner. On a BYD head unit it lives in the
+     * automatic card (ADR-009); other head units keep their existing system-settings card.
+     */
+    private fun automaticHotspotControl(card: LinearLayout) {
+        if (!CarHotspotSetup.isBydHeadUnit(this)) return
+        val mode = AirPlayPersistence.loadWirelessHotspotMode(this)
+        val access = bydAdbAccess ?: LocalAdb.Access.UNREACHABLE
+        when (AutoHotspotPlacement.route(mode, bydHeadUnit = true, adbAccess = access,
+            appStartSupported = CarHotspotTethering.appStartSupported())) {
+            AutoHotspotControl.ADB_TOGGLE -> adbToggle(card, R.string.auto_car_hotspot_title,
+                R.string.auto_car_hotspot_description,
+                read = { CarHotspotSettings.enabled(this) },
+                permissions = {
+                    buildList {
+                        add(CarHotspotSetup.Permission.HOTSPOT)
+                        if (AirPlayPersistence.loadAutoStartOnBoot(this@DiPlayActivity)) {
+                            add(CarHotspotSetup.Permission.BOOT_LAUNCH)
+                        }
+                    }
+                }) {
+                CarHotspotSettings.setEnabled(this, it)
+                if (!it) startupHotspotCancelled = true
+            }
+            AutoHotspotControl.READ_ONLY -> card.addView(label(getString(R.string.auto_car_hotspot_description), 14, MUTED))
+            AutoHotspotControl.SYSTEM_SETTINGS_TOGGLE, AutoHotspotControl.HIDDEN -> Unit
+        }
+    }
+
+    /** Registers the process-local wake receiver only while automatic connection is usable. */
+    private fun refreshAutoConnectWakeReceiver() {
+        val usable = AutoConnectPreferences.masterEnabled(this) &&
+            DiPlayPreferences.phoneAddress(this) != null
+        if (usable) {
+            SleepWakeTrigger.ensureRegistered(applicationContext) { offerAutoConnect(AutoConnectTrigger.SLEEP_WAKE) }
+        } else {
+            SleepWakeTrigger.unregister(applicationContext)
+        }
+    }
+
+    private fun offerAutoConnect(trigger: AutoConnectTrigger) {
+        if (setupError != null || CarPlayBackgroundSession.hasSession()) return
+        if (trigger == AutoConnectTrigger.RETRY_BUTTON) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        val env = autoConnectEnvironment(trigger, now)
+        val decision = AutoConnectSession.offer(trigger, env)
+        lastAutoConnectTrigger = trigger
+        lastAutoConnectTriggerAt = now
+        if (decision is AutoConnectDecision.Start) autoConnectSessionId = decision.request.sessionId
+        if (decision !is AutoConnectDecision.Ignore) {
+            if (page == "home" && status != null) refreshStatus()
+        }
+    }
+
+    private fun autoConnectEnvironment(trigger: AutoConnectTrigger, now: Long): AutoConnectEnvironment {
+        val bluetoothAllowed = Build.VERSION.SDK_INT < 31 ||
+            checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+        val bonded = if (bluetoothAllowed) bondedIphones() else emptyList()
+        val mode = AirPlayPersistence.loadWirelessHotspotMode(this)
+        val hotspotState = when (mode) {
+            WirelessHotspotMode.MANUAL -> when (com.shilapi.xcertplay.network.CarHotspotStatus.isEnabled(this)) {
+                true -> HotspotState.ON
+                false -> HotspotState.OFF
+                null -> HotspotState.UNKNOWN
+            }
+            else -> HotspotState.NOT_APPLICABLE
+        }
+        return AutoConnectEnvironment(
+            masterEnabled = AutoConnectPreferences.masterEnabled(this),
+            openOnLaunch = DiPlayPreferences.autoConnect(this),
+            connectOnPhoneBluetooth = DiPlayPreferences.connectOnPhoneBluetooth(this),
+            autoStartOnBoot = AirPlayPersistence.loadAutoStartOnBoot(this),
+            wirelessMode = mode,
+            preferredAddress = DiPlayPreferences.phoneAddress(this),
+            preferredLastSuccessAt = AutoConnectPreferences.preferred(this)?.lastSuccessAt,
+            bondedIphones = bonded,
+            connectedIphoneCount = bonded.size,
+            bluetoothPermission = bluetoothAllowed,
+            overlayPermission = Settings.canDrawOverlays(this),
+            writeSettingsOrAdbHotspot = CarHotspotSettings.enabled(this) && CarHotspotTethering.permitted(this),
+            hotspotState = hotspotState,
+            sessionActive = AutoConnectSession.state() is AutoConnectState.Running,
+            nowElapsedMillis = now,
+            lastTriggerAtElapsedMillis = lastAutoConnectTriggerAt.takeIf { lastAutoConnectTrigger == trigger },
+            lastTrigger = lastAutoConnectTrigger,
+        )
+    }
+
+    /** Only for the target-resolution snapshot; the gate never selects a device itself. */
+    private fun bondedIphones(): List<BondedIphone> = runCatching {
+        val adapter = getSystemService(BluetoothManager::class.java)?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+        adapter?.bondedDevices?.map { BondedIphone(it.address, it.name) } ?: emptyList()
+    }.getOrDefault(emptyList())
+
+    /** The only place the automatic session starts a connection; the manual path never comes here. */
+    internal fun startAutomaticConnection(request: AutoConnectRequest) {
+        if (isFinishing || isDestroyed) return
+        if (setupError != null) {
+            AutoConnectSession.onFailure(request.sessionId, AutoConnectFailure.UNKNOWN)
+            return
+        }
+        if (CarPlayBackgroundSession.hasSession()) {
+            AutoConnectSession.cancel(CancelReason.MANUAL_TAKEOVER)
+            return
+        }
+        if (carHotspotOff()) {
+            // ADR-004: the automatic path never shows the blocking hotspot dialog, it ends in a terminal state.
+            AutoConnectSession.onFailure(request.sessionId, AutoConnectFailure.CAR_HOTSPOT_OFF)
+            if (page == "home" && status != null) refreshStatus()
+            return
+        }
+        if (DiPlayPreferences.phoneAddress(this) == null) {
+            AutoConnectSession.onFailure(request.sessionId, AutoConnectFailure.CHOSEN_IPHONE_NOT_PAIRED)
+            return
+        }
+        AutoConnectSession.onStage(request.sessionId, AutoConnectStage.RESOLVING_TARGET)
+        AirPlayPersistence.saveWirelessEnabled(this, true)
+        openProjection()
+        refreshStatus()
+    }
 
     private fun filteredSection(
         parent: LinearLayout,
@@ -6994,5 +7213,27 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         private const val SETTINGS_CONTROL_INSET_DP = 16
         /** Gap under an explanatory note, so it never touches the next control. */
         private const val SETTINGS_NOTE_GAP_DP = 12
+    }
+}
+
+/**
+ * The production connector: starts the one connection path the automatic session may use and
+ * holds the Activity weakly so the process singleton cannot leak a destroyed screen.
+ */
+private class ActivityAutoConnectConnector(activity: DiPlayActivity) : AutoConnectConnector {
+    private val reference = java.lang.ref.WeakReference(activity)
+
+    override fun start(request: AutoConnectRequest): Boolean {
+        val activity = reference.get() ?: return false
+        activity.autoConnectSessionId = request.sessionId
+        activity.runOnUiThread { activity.startAutomaticConnection(request) }
+        return true
+    }
+
+    override fun cancelSession(sessionId: Long) {
+        val activity = reference.get() ?: return
+        activity.runOnUiThread {
+            if (activity.autoConnectSessionId == sessionId) activity.autoConnectSessionId = null
+        }
     }
 }

@@ -56,13 +56,28 @@ class CarHotspotSwitchTest {
         StatusCheck.workers.clear()
         Grant.allowed = CarHotspotSetup.Permission.entries.toSet()
         Grant.access = LocalAdb.Access.READY
+        // G-12: the moved hotspot control needs the BYD head-unit stub, exactly like BydAdbSettingsUiTest.
+        shadowOf(app.packageManager).installPackage(android.content.pm.PackageInfo().apply {
+            packageName = "com.byd.carsettings"
+            applicationInfo = android.content.pm.ApplicationInfo().apply {
+                packageName = "com.byd.carsettings"
+                flags = android.content.pm.ApplicationInfo.FLAG_SYSTEM
+            }
+        })
         activity = Robolectric.buildActivity(DiPlayActivity::class.java).get()
         activity.setTheme(android.R.style.Theme_Material_NoActionBar)
         AirPlayPersistence.saveWirelessHotspotMode(activity, WirelessHotspotMode.MANUAL)
         AirPlayPersistence.saveAutoStartOnBoot(activity, false)
-        controls = LinearLayout(activity)
+        assertTrue(CarHotspotSetup.isBydHeadUnit(activity))
+        // Probes the ADB state the automatic card needs, without drawing the old ADB card into `controls`.
         DiPlayActivity::class.java.getDeclaredMethod("renderBydAdbControls", LinearLayout::class.java,
-            LocalAdb.Access::class.java).apply { isAccessible = true }.invoke(activity, controls, LocalAdb.Access.READY)
+            LocalAdb.Access::class.java).apply { isAccessible = true }
+            .invoke(activity, LinearLayout(activity), LocalAdb.Access.READY)
+        controls = LinearLayout(activity)
+        // G-12: render just the AUTOMATIC_CONNECTION card, which now owns the hotspot switch.
+        DiPlayActivity::class.java.getDeclaredMethod("automaticConnectionSettings", LinearLayout::class.java)
+            .apply { isAccessible = true }.invoke(activity, controls)
+        shadowOf(Looper.getMainLooper()).idle()
         activity.setContentView(controls)
     }
 
@@ -176,7 +191,11 @@ class CarHotspotSwitchTest {
     }
 
     @Test fun vehicleControlsAreNotDuplicatedInTheHotspotPermissionCard() {
-        assertEquals(1, switches(controls).size)
+        // G-12: the automatic card now holds the master switch and its children too; the assertion is
+        // about the hotspot control having exactly one owner, so it counts that control.
+        assertEquals(1, switches(controls).count {
+            it.contentDescription == activity.getString(R.string.auto_car_hotspot_title)
+        })
         assertFalse(BydOutputSettings.batteryToIphone(activity))
         assertFalse(BydOutputSettings.wheelSpeedToIphone(activity))
         assertFalse(BydOutputSettings.videoWhileParked(activity))

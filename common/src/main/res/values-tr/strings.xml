@@ -1042,4 +1042,15 @@
     <string name="wifi_direct_channel_unavailable">Wi-Fi Direct tercih edilen kanalı kullanamıyor</string>
     <string name="settings_existing_wifi_interface">Ağ arayüzü (isteğe bağlı)</string>
     <string name="settings_existing_wifi_interface_description">Yalnızca yerel ağ (LAN) bağlantısı Android\'in Wi-Fi olarak bildirmediği bir arayüzde (örneğin eth1 üzerindeki bir USB ağ kartı) çalışan üniteler içindir. Otomatik seçilmesi için boş bırakın.</string>
+
+    <string name="settings_auto_connect_title">Otomatik bağlan</string>
+    <string name="settings_auto_connect_description">DiPlay, ilk başarılı kablosuz bağlantıdan sonra iPhone\'unuza kendi kendine yeniden bağlanır. Bunu istediğiniz zaman kapatabilirsiniz.</string>
+    <string name="settings_auto_connect_needs_master">Önce otomatik bağlantıyı açın.</string>
+    <string name="settings_auto_connect_enabled_notice">Otomatik bağlantı açık. Ayarlardan kapatabilirsiniz.</string>
+    <string name="settings_auto_connect_stage_network">Araç erişim noktası hazırlanıyor…</string>
+    <string name="settings_auto_connect_stage_join">iPhone\'un Wi-Fi\'a katılması bekleniyor…</string>
+    <string name="settings_auto_connect_stage_connect">CarPlay oturumu başlatılıyor…</string>
+    <string name="settings_auto_connect_attempt_progress">%2$d denemeden %1$d. · %3$d sn</string>
+    <string name="settings_auto_connect_needs_choice">Birden fazla iPhone var. Bağlanacak olanı seçin.</string>
+    <string name="settings_auto_connect_retry_single">Yeniden dene</string>
 </resources>
