@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAR-3 自动热点连接 · 测试设计与用例 v1.0.0</title>
+<style>
+  :root {
+    --bg:#ffffff; --fg:#1b1f24; --muted:#5b6572; --line:#d8dee6;
+    --accent:#0b5cad; --accent-soft:#eaf1f9; --warn:#8a4b00; --warn-soft:#fff5e6;
+    --danger:#a11919; --danger-soft:#fdecec; --ok:#1d6b3a; --ok-soft:#eaf6ee;
+    --code:#f4f6f9;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.72 -apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; }
+  .layout { display:grid; grid-template-columns:300px minmax(0,1fr); max-width:1340px; margin:0 auto; }
+  nav.toc { position:sticky; top:0; align-self:start; max-height:100vh; overflow:auto;
+    padding:22px 16px 32px; border-right:1px solid var(--line); }
+  nav.toc strong { display:block; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  nav.toc ol { margin:0; padding-left:18px; }
+  nav.toc li { margin:3px 0; }
+  nav.toc a { color:var(--fg); text-decoration:none; border-bottom:1px solid transparent; }
+  nav.toc a:hover, nav.toc a:focus-visible { color:var(--accent); border-bottom-color:var(--accent); }
+  main { padding:32px 40px 90px; min-width:0; }
+  header.doc { border-bottom:2px solid var(--fg); padding-bottom:18px; margin-bottom:26px; }
+  h1 { font-size:27px; line-height:1.3; margin:0 0 8px; }
+  .subtitle { color:var(--muted); margin:0; }
+  h2 { font-size:21px; margin:44px 0 14px; padding-top:10px; border-top:1px solid var(--line); }
+  h3 { font-size:17px; margin:26px 0 10px; }
+  p { margin:10px 0; }
+  ul, ol { margin:10px 0; padding-left:24px; }
+  li { margin:4px 0; }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  pre { background:var(--code); border:1px solid var(--line); border-radius:6px; padding:12px 14px; overflow:auto; font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:13.2px; }
+  th, td { border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top; }
+  th { background:#f3f6f9; font-weight:600; }
+  caption { caption-side:top; text-align:left; font-size:13px; color:var(--muted); padding-bottom:6px; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; font-weight:600; border:1px solid transparent; white-space:nowrap; }
+  .ok { background:var(--ok-soft); color:var(--ok); border-color:#c6e6d0; }
+  .warn { background:var(--warn-soft); color:var(--warn); border-color:#f3ddb8; }
+  .bad { background:var(--danger-soft); color:var(--danger); border-color:#f2c9c9; }
+  .info { background:var(--accent-soft); color:var(--accent); border-color:#cfe0f0; }
+  .box { border:1px solid var(--line); border-left:4px solid var(--accent); background:#fbfcfe; padding:12px 16px; margin:16px 0; }
+  .box.warn { border-left-color:var(--warn); background:var(--warn-soft); }
+  .box.ok { border-left-color:var(--ok); background:var(--ok-soft); }
+  .box .t { font-weight:700; display:block; margin-bottom:4px; }
+  .id { font:600 12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--accent); white-space:nowrap; }
+  .gwt { font-size:12.6px; }
+  .gwt b { color:var(--muted); font-weight:600; }
+  @media (max-width:960px) { .layout { grid-template-columns:1fr; } nav.toc { position:static; max-height:none; border-right:0; border-bottom:1px solid var(--line); } main { padding:22px 18px 60px; } }
+  @media print { nav.toc { display:none; } .layout { display:block; } main { padding:0; } h2 { break-after:avoid; } tr { break-inside:avoid; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="目录">
+  <strong>目录</strong>
+  <ol>
+    <li><a href="#sec-1">文档控制</a></li>
+    <li><a href="#sec-2">测试目标、范围与分层策略</a></li>
+    <li><a href="#sec-3">环境、数据、假件与隔离</a></li>
+    <li><a href="#sec-4">入口/出口标准与缺陷分级</a></li>
+    <li><a href="#sec-5">JVM 单测用例（TC-001…TC-019）</a></li>
+    <li><a href="#sec-6">Robolectric 用例（TC-020…TC-052）</a></li>
+    <li><a href="#sec-7">设置 / 翻译 / CI 回归用例（TC-053…TC-060）</a></li>
+    <li><a href="#sec-8">11 语言与 RTL 专项</a></li>
+    <li><a href="#sec-9">非功能测试设计（NFR-001…011）</a></li>
+    <li><a href="#sec-10">H3 真车验收脚本（V-01…V-08）</a></li>
+    <li><a href="#sec-11">需求 → 设计 → 测试追溯矩阵（RTM）</a></li>
+    <li><a href="#sec-12">G-01…G-12 收口矩阵</a></li>
+    <li><a href="#sec-13">A3 开发就绪包</a></li>
+    <li><a href="#sec-14">覆盖缺口、未自动化项与风险</a></li>
+    <li><a href="#sec-15">变更记录</a></li>
+  </ol>
+</nav>
+<main>
+<header class="doc">
+  <h1>KAR-3 自动热点连接 · 测试设计与用例</h1>
+  <p class="subtitle">A3 · test design 阶段 · KAR-04-TestDesigner · v1.0.0 · 2026-11-01</p>
+</header>
+
+<section id="sec-1">
+<h2>1. 文档控制</h2>
+<table>
+  <caption>表 1-1 文档元数据</caption>
+  <tbody>
+    <tr><th scope="row">Issue</th><td>KAR-3「支持自动热点链接」（<code>01a19291-ef3e-71fd-ba30-a22b82b6b371</code>）</td></tr>
+    <tr><th scope="row">项目</th><td>DiPlay（<code>git@github.com:Karma1996/DiPlay.git</code>）</td></tr>
+    <tr><th scope="row">阶段</th><td>test design · A3 开发就绪（H2 已批准）</td></tr>
+    <tr><th scope="row">版本</th><td>v1.0.0（首版）</td></tr>
+    <tr><th scope="row">作者</th><td>KAR-04-TestDesigner</td></tr>
+    <tr><th scope="row">日期</th><td>2026-11-01</td></tr>
+    <tr><th scope="row">分支</th><td><code>feat/KAR-3-auto-hotspot-connect</code></td></tr>
+    <tr><th scope="row">H1 基线</th><td><a href="需求分析文档.html">需求分析文档 v0.1.0</a> + <a href="交互原型.html">交互原型 v0.1.0</a> @ <code>240fb053986814ff679cab44839d52f933939cef</code>；karma <code>2026-11-01T00:53:44Z</code> 文字批准（D-001…D-005 接受建议）</td></tr>
+    <tr><th scope="row">H2 基线</th><td><a href="方案设计文档.html">方案设计文档 v1.0.0 正文</a>（v1.0.1 仅 §20.2 预审回填）+ <a href="H2-决策简报.html">H2-决策简报 v1.0.0</a> + <a href="可测性预审记录.html">可测性预审记录 v1.0.0</a> @ <code>089b0ea9d3d7ab24eeef7b29d502a9cc944485a9</code></td></tr>
+    <tr><th scope="row">H2 批准</th><td>karma（人类 Owner）· <code>2026-11-01T02:42:31Z</code> · 原话「/accept 批准」；ADR-001…009 接受、§17 D-1…D-6 接受、S1 关闭、G-03 走 §4.1(a)、G-06 八字段、G-10 每槽 20 次、G-12 授权更新两处位置断言、不新增 <code>androidTest</code>、DA-018/DA-019 按建议收口</td></tr>
+    <tr><th scope="row">D-001</th><td><code>develop</code> 已创建并指向 <code>615b32c</code>（与 <code>main</code> 同点、即本分支 base）；<strong>分支保护尚未开启</strong>（人类侧 GitHub 操作）。本分支无需 rebase，PR 待 build 后以 <code>develop</code> 为 base</td></tr>
+    <tr><th scope="row">配套材料</th><td><a href="方案设计文档.html">方案设计文档</a> · <a href="可测性预审记录.html">可测性预审记录</a> · <a href="需求分析文档.html">需求分析文档</a> · <a href="交互原型.html">交互原型</a> · <a href="H2-决策简报.html">H2-决策简报</a></td></tr>
+    <tr><th scope="row">本阶段边界</th><td>只写测试设计/规格/脚本；不写生产代码、不改应用逻辑、不在应用代码加桩、不改需求/设计语义、不建 PR、不合并</td></tr>
+    <tr><th scope="row">Commit SHA</th><td>本文件随本轮提交推送；具体 SHA 见 <code>S01 HANDOFF</code> 的 <code>head</code> 字段</td></tr>
+  </tbody>
+</table>
+<div class="box">
+  <span class="t">本轮"可执行"的口径（不冒充已运行）</span>
+  本文件交付的是<strong>可执行验收测试规格</strong>：每条用例给出 Given/When/Then、断言点、目标测试类/方法、可注入接缝与假件。<strong>不在本轮提交 <code>.kt</code> 测试文件</strong>：被测类（<code>AutoConnectGate</code>/<code>AutoConnectBudget</code>/<code>AutoConnectSession</code> 等）尚未实现，提交引用它们的测试会直接破坏 <code>:common:testDebugUnitTest</code> 的编译；而"在应用代码里加桩"被本轮 DISPATCH 明确禁止。KAR-05 按 §13 实现生产类后，测试文件按本规格落地即可运行；首轮预期为红（功能未实现），不得改期望值。
+</div>
+</section>
+
+<section id="sec-2">
+<h2>2. 测试目标、范围与分层策略</h2>
+<h3>2.1 目标</h3>
+<p>用最少的、只有一种读法的断言，证明 H1 的 25 条 AC 与 H2 的 24 条 DA 成立；把"只能真车证明"的部分明确交给 H3，不把真车结论写进 CI 证据。</p>
+<h3>2.2 范围与非目标</h3>
+<table>
+  <caption>表 2-1 范围</caption>
+  <thead><tr><th scope="col">在范围内</th><th scope="col">不在范围内</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>四触发源与门禁、回合/预算、终态与取消、冲突、休眠唤醒、设置 IA 与 11 语言、诊断脱敏、宿主许可接入、既有回归</td>
+      <td>重写连接栈、新增权限/组件/前台服务、<code>androidTest</code> 源集、非 BYD 车型适配、像素级还原原型、真车代理验收</td>
+    </tr>
+  </tbody>
+</table>
+<h3>2.3 分层与理由</h3>
+<table>
+  <caption>表 2-2 测试分层</caption>
+  <thead><tr><th scope="col">层</th><th scope="col">跑在哪</th><th scope="col">覆盖什么</th><th scope="col">不覆盖什么</th><th scope="col">用例</th></tr></thead>
+  <tbody>
+    <tr><td>JVM 单测</td><td><code>:common:testDebugUnitTest</code>（无 Robolectric）</td><td>纯策略/预算/目标解析/控件形态/源码规则</td><td>Android 组件、真实时钟、真实蓝牙</td><td>TC-001…TC-019</td></tr>
+    <tr><td>Robolectric</td><td>同一 CI 任务（<code>isIncludeAndroidResources = true</code>）</td><td>Receiver、Session、Preferences、Activity/Settings、AlertDialog、Notification、宿主许可、ShadowSystemClock</td><td>真实固件、真实 ACL、真实休眠、倒车影像叠加</td><td>TC-020…TC-059</td></tr>
+    <tr><td>CI 回归</td><td>现有 <code>:shared/:common/:home</code> + lint + assemble</td><td>既有 USB/无线/设置/翻译行为不被破坏</td><td>真实设备</td><td>TC-060 + §13.2</td></tr>
+    <tr><td>真车/H3</td><td>BYD 车机 + iPhone</td><td>冷启动/唤醒/热点/多设备/功耗/长跑/无障碍/倒车影像</td><td>可重复的 CI 证据</td><td>TC-101…TC-118</td></tr>
+  </tbody>
+</table>
+<div class="box warn">
+  <span class="t">为什么不用 androidTest</span>
+  H2 已批准"不新增 <code>androidTest</code>"。仓库当前 0 个 <code>androidTest</code> 源集，CI 无模拟器/设备农场；本需求必须真车证明的项（蓝牙 ACL 顺序、热点固件、休眠唤醒、倒车影像）在模拟器上同样不可证。新增空源集只会产生 CI 永远跑不到的测试。
+</div>
+<h3>2.4 优先级定义</h3>
+<table>
+  <caption>表 2-3 优先级</caption>
+  <thead><tr><th scope="col">优先级</th><th scope="col">含义</th><th scope="col">典型用例</th></tr></thead>
+  <tbody>
+    <tr><td>P0</td><td>连接可用性、安全/凭据、驾驶安全；失败即阻塞发布</td><td>预算上限、终态互斥、冲突不静默、无阻塞框、凭据不落盘</td></tr>
+    <tr><td>P1</td><td>主旅程与设置/翻译门禁</td><td>四触发、opt-in、设置 IA、11 语言、RTL</td></tr>
+    <tr><td>P2</td><td>诊断、可观测性、降级说明</td><td>8 字段、脱敏、tier、重试文案</td></tr>
+    <tr><td>P3</td><td>视觉/文案细节</td><td>截图、间距、图标方向</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="sec-3">
+<h2>3. 环境、数据、假件与隔离</h2>
+<h3>3.1 环境</h3>
+<table>
+  <caption>表 3-1 环境矩阵</caption>
+  <thead><tr><th scope="col">环境</th><th scope="col">用途</th><th scope="col">关键配置</th></tr></thead>
+  <tbody>
+    <tr><td>JDK 25 + Gradle（CI 同款）</td><td>JVM/Robolectric/CI</td><td><code>./gradlew :shared:testDebugUnitTest :common:testDebugUnitTest :home:testDebugUnitTest</code></td></tr>
+    <tr><td>Robolectric 4.17</td><td>Android 组件</td><td><code>sdk = [28/29/33]</code> 按用例；<code>LooperMode.PAUSED</code>；<code>manifest = Config.NONE</code> 视需要</td></tr>
+    <tr><td>BYD 车机（H3）</td><td>真车</td><td>DiLink 3/4/5；Android 9/10/12+；iPhone（≥ iOS 17 与 iOS 14/15 下限机）</td></tr>
+  </tbody>
+</table>
+<h3>3.2 假件与可注入点</h3>
+<table>
+  <caption>表 3-2 假件设计</caption>
+  <thead><tr><th scope="col">假件</th><th scope="col">形态</th><th scope="col">驱动/断言</th><th scope="col">用于</th></tr></thead>
+  <tbody>
+    <tr><td><code>RecordingConnector</code></td><td>实现 <code>AutoConnectConnector</code></td><td><code>starts: MutableList</code>、<code>cancels: MutableList</code>；<code>start()</code> 记录请求并返回 <code>true</code></td><td>TC-003/005/030/031 等"0 次 start"断言</td></tr>
+    <tr><td><code>FakeClock</code></td><td><code>var now = 0L</code></td><td><code>AutoConnectBudget({ now })</code>；直接推进毫秒</td><td>TC-009…TC-014、TC-047</td></tr>
+    <tr><td>Robolectric <code>ShadowSystemClock</code></td><td><code>shadowOf(SystemClock).advanceBy(Duration)</code></td><td>驱动 Host 的 <code>elapsedRealtime</code>，不靠 sleep</td><td>TC-047（150 s 端到端）</td></tr>
+    <tr><td><code>ContextWrapper</code></td><td>重写 <code>startActivity</code> 收集 Intent</td><td>现有 <code>PhoneBluetoothReceiverTest</code> 模式</td><td>TC-033、TC-052</td></tr>
+    <tr><td><code>ShadowAlertDialog</code> / <code>ShadowNotificationManager</code></td><td>Robolectric shadows</td><td><code>getLatestAlertDialog()</code>、通知列表计数</td><td>TC-034/035</td></tr>
+    <tr><td>BYD 系统包桩</td><td>Robolectric <code>installPackage("com.byd.carsettings", FLAG_SYSTEM)</code></td><td>让 <code>CarHotspotSetup.isBydHeadUnit</code> 为真</td><td>TC-054、G-12</td></tr>
+    <tr><td>ADB 访问 shadow</td><td>现有 <code>CarHotspotAdbGrantTest.StatusCheck</code> / <code>CarHotspotSwitchTest.StatusCheck</code></td><td>返回 <code>READY / NOT_APPROVED / UNREACHABLE</code></td><td>TC-015、TC-054</td></tr>
+  </tbody>
+</table>
+<h3>3.3 隔离与可重复</h3>
+<ul>
+  <li>每个用例清空 <code>diplay</code>、<code>xcertplay_airplay</code>、<code>diplay_auto_connect_diag</code>、<code>diplay_phone_wake</code>、<code>diplay_car_hotspot</code>；<code>CarPlayBackgroundSession.clear()</code>。</li>
+  <li>进程单例 <code>AutoConnectSession</code> 与 <code>SleepWakeTrigger</code> 的 <code>AtomicBoolean</code> 必须重置：<strong>G-08 要求实现提供 <code>internal fun resetForTest()</code> 或在 <code>initialize()</code> 中完整重置为 <code>Idle</code></strong>；测试在 <code>@Before/@After</code> 调用。</li>
+  <li>不依赖真实系统时间/网络/蓝牙；不写生产数据；不把真实凭据写入测试。</li>
+  <li>测试类合并（G-09）：新增 Robolectric 类只有 <code>AutoConnectSessionTest</code> 与 <code>AutoConnectUiTest</code> 两个；纯逻辑放 JVM 类，避免顶到 <code>common</code> 的 <code>2g</code> 堆上限。</li>
+</ul>
+</section>
+
+<section id="sec-4">
+<h2>4. 入口/出口标准与缺陷分级</h2>
+<table>
+  <caption>表 4-1 入口/出口</caption>
+  <thead><tr><th scope="col">门</th><th scope="col">条件</th></tr></thead>
+  <tbody>
+    <tr><td>A3 入口</td><td>H2 人类文字批准（已完成，<code>2026-11-01T02:42:31Z</code>）；write_lock = KAR-04；分支 head = <code>089b0ea9</code>；设计 v1.0.0 + 预审 v1.0.0 可读</td></tr>
+    <tr><td>A3 出口</td><td>25 AC 全部有 TC 或"仅真车"标注；24 DA 全部有 TC；G-01…G-12 全部有收口；RTM 无孤儿；H3 脚本含 V-01…V-08 + G-04 三槽 + G-05；A3 包给出可开工清单与 CI 预期</td></tr>
+    <tr><td>测试执行出口（build 后）</td><td>CI 全量命令通过；无跳过/无 <code>@Ignore</code>/无放宽断言；H3 由人类完成并回填</td></tr>
+  </tbody>
+</table>
+<table>
+  <caption>表 4-2 缺陷分级（沿用项目约章 §6）</caption>
+  <thead><tr><th scope="col">级别</th><th scope="col">定义</th><th scope="col">处理</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill bad">S0</span></td><td>凭据/身份入仓或外发、绕过 CI/删测试、未授权设备数据访问</td><td>立即停写并升级人类；不得继续 build</td></tr>
+    <tr><td><span class="pill warn">S1</span></td><td>连接路径回归、默认开启行为、多设备误连、失败弹窗、11 语言/设置 IA</td><td>H2 前关闭（设计层已关闭，build 用 TC 验证）</td></tr>
+    <tr><td><span class="pill info">S2</span></td><td>固件差异、后台唤醒限制、接收器生命周期、两套预算错位</td><td>H3 前关闭</td></tr>
+    <tr><td>S3</td><td>文档/文案/截图</td><td>H3 前修</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="sec-5">
+<h2>5. JVM 单测用例（TC-001…TC-019）</h2>
+<p>目标类：<code>common/src/main/java/com/shilapi/xcertplay/autoconnect/</code>。测试文件：<code>AutoConnectGateTest.kt</code>、<code>AutoConnectBudgetTest.kt</code>、<code>AutoHotspotPlacementTest.kt</code>、<code>AutoConnectSourceRulesTest.kt</code>（均 <code>common/src/test/java/com/shilapi/xcertplay/autoconnect/</code>，纯 JVM，不启 Robolectric）。</p>
+<table>
+  <caption>表 5-1 门禁与触发（AutoConnectGateTest）</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">优先级</th><th scope="col">Given / When / Then</th><th scope="col">断言点</th><th scope="col">落位</th><th scope="col">关联</th></tr></thead>
+  <tbody>
+    <tr><td class="id">TC-001</td><td>P0</td><td class="gwt"><b>G:</b> 默认 <code>AutoConnectEnvironment</code>（master/子开关全开、有首选、无线 MANUAL）<br><b>W:</b> 分别以 COLD_START / APP_OPENED / PHONE_BLUETOOTH / SLEEP_WAKE / RETRY_BUTTON 调 <code>evaluate</code><br><b>T:</b> 前四者 <code>Start</code>；RETRY_BUTTON <code>Start</code> 且不被"四类自动触发"计数</td><td>枚举五值各一断言；<code>AutoConnectTrigger.entries</code> 自动触发集合 == 四类</td><td><code>AutoConnectGateTest.fourAutomaticTriggersAndRetryIsUserAction</code></td><td>FR-002、DA-002</td></tr>
+    <tr><td class="id">TC-002</td><td>P0</td><td class="gwt"><b>G:</b> <code>masterEnabled=false</code><br><b>W:</b> 四触发逐个 <code>evaluate</code><br><b>T:</b> 均 <code>Ignore(OFF)</code>，不 <code>Start</code></td><td>四个 reason 均为 <code>IGNORE_OFF</code>；无 <code>Start</code></td><td><code>AutoConnectGateTest.masterOffIgnoresAllTriggers</code></td><td>FR-012、DA-003</td></tr>
+    <tr><td class="id">TC-003</td><td>P0</td><td class="gwt"><b>G:</b> 无首选、1 台或 2 台已配对<br><b>W:</b> APP_OPENED / COLD_START<br><b>T:</b> <code>NeedsChoice(NO_PREFERRED)</code>，不选任何设备</td><td>decision 类型；<code>RecordingConnector.starts.isEmpty()</code></td><td><code>AutoConnectGateTest.noPreferredNeedsChoiceNeverSelects</code></td><td>FR-004/008、AC-005/010、DA-011</td></tr>
+    <tr><td class="id">TC-004</td><td>P0</td><td class="gwt"><b>G:</b> 有首选地址但不在当前绑定列表<br><b>W:</b> 任一自动触发<br><b>T:</b> <code>NeedsChoice(PREFERRED_INVALID)</code>，不自动改选其他已配对设备</td><td>decision 类型；<code>resolveTarget()=PREFERRED_INVALID</code>；0 start</td><td><code>AutoConnectGateTest.invalidPreferredNeverFallsBack</code></td><td>FR-004/008、AC-005、DA-011</td></tr>
+    <tr><td class="id">TC-005</td><td>P0</td><td class="gwt"><b>G:</b> 无首选 + ≥2 台已配对；或首选失效 + 其他 iPhone 已连接<br><b>W:</b> 自动触发<br><b>T:</b> <code>NeedsChoice</code>，候选数量与绑定数一致，0 次 start</td><td><code>NeedsChoice.candidates</code>；<code>starts</code> 为空</td><td><code>AutoConnectGateTest.multiCandidateNeedsChoice</code></td><td>FR-008、AC-010、DA-011</td></tr>
+    <tr><td class="id">TC-006</td><td>P1</td><td class="gwt"><b>G:</b> 权限/浮窗/热点能力的 16 种组合<br><b>W:</b> 调 <code>tier()</code> 与四触发 <code>evaluate</code><br><b>T:</b> A/B/C/D 与 §12.2 表一致；C 档 T-2 仍 <code>Start</code>；D 档返回 <code>Blocked(BLUETOOTH_PERMISSION)</code></td><td>表驱动 16 行逐行断言；C 档 APP_OPENED 特殊断言；D 档 reason</td><td><code>AutoConnectGateTest.tierMatrix</code></td><td>FR-002、G-4、DA-004</td></tr>
+    <tr><td class="id">TC-007</td><td>P1</td><td class="gwt"><b>G:</b> 同一触发源上一事件距现在分别为 3 s/15 s/60 s 内与之外<br><b>W:</b> <code>evaluate</code> 两次<br><b>T:</b> 窗口内 <code>Ignore(DUPLICATE)</code>，窗口外 <code>Start</code></td><td>T-2 3 s、T-3 15 s、T-4 60 s 三组边界；0/1 ms 越界各一</td><td><code>AutoConnectGateTest.dedupeWindows</code></td><td>FR-013、AC-016、DA-013</td></tr>
+    <tr><td class="id">TC-008</td><td>P1</td><td class="gwt"><b>G:</b> 有首选（后续）与无首选（首次）<br><b>W:</b> <code>resolveTarget()</code><br><b>T:</b> 分别为 <code>PREFERRED</code> 与 <code>NO_PREFERRED</code>，路径互斥</td><td>两分支互斥；首次不进入自动重连</td><td><code>AutoConnectGateTest.firstPairAndLaterReconnectAreExclusive</code></td><td>FR-004、AC-005</td></tr>
+  </tbody>
+</table>
+<table>
+  <caption>表 5-2 预算与时间（AutoConnectBudgetTest）</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">优先级</th><th scope="col">Given / When / Then</th><th scope="col">断言点</th><th scope="col">落位</th><th scope="col">关联</th></tr></thead>
+  <tbody>
+    <tr><td class="id">TC-009</td><td>P0</td><td class="gwt"><b>G:</b> <code>FakeClock(0)</code>，预算默认 5/150 s<br><b>W:</b> 连续 6 次 <code>begin()/attemptPermit()</code><br><b>T:</b> 前 5 次非 null，第 6 次 null</td><td>返回序列；<code>attempts</code> 不超过 5</td><td><code>AutoConnectBudgetTest.sixthPermitIsNull</code></td><td>FR-006、NFR-002、DA-005</td></tr>
+    <tr><td class="id">TC-010</td><td>P0</td><td class="gwt"><b>G:</b> 时钟在 0 与 150 000 ms 边界<br><b>W:</b> <code>attemptPermit()</code><br><b>T:</b> ≤149 999 ms 仍可（若配额未耗尽）；150 001 ms 后恒 null</td><td>149 999/150 000/150 001 三点；继续推进 10 个 tick 仍 null</td><td><code>AutoConnectBudgetTest.deadlineIsHard</code></td><td>NFR-002、DA-006</td></tr>
+    <tr><td class="id">TC-011</td><td>P0</td><td class="gwt"><b>G:</b> 每次失败都发生在尝试窗口内<br><b>W:</b> 连续取 <code>backoffMillis()</code><br><b>T:</b> 2/4/8/16 s 严格递增；第 5 次尝试后不再发退避</td><td>数组逐项等于 <code>2_000/4_000/8_000/16_000</code>；每项 ≥2 000</td><td><code>AutoConnectBudgetTest.backoffSequence</code></td><td>NFR-002、DA-007</td></tr>
+    <tr><td class="id">TC-012</td><td>P0</td><td class="gwt"><b>G:</b> 首次失败即不可重试（CAR_HOTSPOT_OFF）<br><b>W:</b> <code>outcome(failure)</code><br><b>T:</b> 立即终态；<code>attempts=max(1,started)</code>；后续 <code>attemptPermit()==null</code></td><td>outcome 类型与 attempts；不消耗后续配额</td><td><code>AutoConnectBudgetTest.nonRetryableDoesNotConsumeBudget</code></td><td>FR-006、AC-007、DA-008</td></tr>
+    <tr><td class="id">TC-013</td><td>P0</td><td class="gwt"><b>G:</b> 每次尝试 45 s 慢失败<br><b>W:</b> 会话推进至停<br><b>T:</b> ≤3 次尝试、总时长 ≤150 s、第 4 次许可为 null</td><td>记录每次开始/结束；最终 elapsed ≤150 000</td><td><code>AutoConnectBudgetTest.slowFailureStaysUnderDeadline</code></td><td>AC-008、NFR-002</td></tr>
+    <tr><td class="id">TC-014</td><td>P0</td><td class="gwt"><b>G:</b> 每次尝试 5 s 快失败<br><b>W:</b> 会话推进至停<br><b>T:</b> 恰好 5 次、总时长 ≤55 s</td><td>start 次数 == 5；elapsed ≤55 000</td><td><code>AutoConnectBudgetTest.fastFailureUsesFiveAttempts</code></td><td>AC-008、NFR-002</td></tr>
+  </tbody>
+</table>
+<table>
+  <caption>表 5-3 控件形态与源码规则（AutoHotspotPlacementTest / AutoConnectSourceRulesTest）</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">优先级</th><th scope="col">Given / When / Then</th><th scope="col">断言点</th><th scope="col">落位</th><th scope="col">关联</th></tr></thead>
+  <tbody>
+    <tr><td class="id">TC-015</td><td>P1</td><td class="gwt"><b>G:</b> (mode, byd, adbAccess, appStartSupported) 的 4 种典型组合<br><b>W:</b> <code>AutoHotspotPlacement.route(...)</code><br><b>T:</b> ADB 开关 / 系统设置开关 / 只读 / 隐藏 四种形态</td><td>四组合逐项断言；非 MANUAL 一律隐藏</td><td><code>AutoHotspotPlacementTest.routesMatchCapabilities</code></td><td>FR-011、AC-014</td></tr>
+    <tr><td class="id">TC-016</td><td>P2</td><td class="gwt"><b>G:</b> 生产源码树<br><b>W:</b> 扫描 <code>scheduleAtFixedRate</code>、<code>postDelayed</code> 自循环、<code>WakeLock</code> 获取<br><b>T:</b> 自动连接相关新代码 0 命中</td><td>白名单：既有代码可命中，新增 <code>autoconnect/</code> 包 0 命中</td><td><code>AutoConnectSourceRulesTest.noPeriodicWorkOrWakelock</code></td><td>NFR-003</td></tr>
+    <tr><td class="id">TC-017</td><td>P0</td><td class="gwt"><b>G:</b> 生产源码树<br><b>W:</b> 扫描 <code>connect(true)</code> 调用点<br><b>T:</b> 只出现在 <code>AutoConnectConnector</code> 实现与手动 UI 分支；自动触发路径无直接调用</td><td>允许列表 + 文件集合断言；自动包内 0 直接调用</td><td><code>AutoConnectSourceRulesTest.noAutomaticConnectBypass</code></td><td>DA-001、R-001</td></tr>
+    <tr><td class="id">TC-018</td><td>P0</td><td class="gwt"><b>G:</b> 自动路径源码<br><b>W:</b> 扫描认证跳过标志/信任白名单/快速通道<br><b>T:</b> 0 命中；认证入口仍只有既有 <code>CarPlayController</code> 路径</td><td>关键字列表 0 命中；<code>DiPlayAuthenticationTest</code> 原样通过</td><td><code>AutoConnectSourceRulesTest.noAuthBypass</code></td><td>NFR-005、DA-019</td></tr>
+    <tr><td class="id">TC-019</td><td>P1</td><td class="gwt"><b>G:</b> 清单与源码<br><b>W:</b> 对比基线 <code>615b32c</code> 与当前<br><b>T:</b> 0 新增 <code>&lt;uses-permission&gt;</code>、0 新增 <code>BroadcastReceiver/Service/Activity</code>、0 新增 <code>queries</code></td><td>清单 XML 结构断言；<code>git diff</code> 白名单</td><td><code>AutoConnectSourceRulesTest.noNewPermissionsOrComponents</code></td><td>NFR-006、A-007</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="sec-6">
+<h2>6. Robolectric 用例（TC-020…TC-052）</h2>
+<p>按 G-09 合并为两个新类：<code>AutoConnectSessionTest.kt</code>（状态/偏好/诊断）与 <code>AutoConnectUiTest.kt</code>（Activity/设置/唤醒/通知）；接收器用例加到既有 <code>PhoneBluetoothReceiverTest.kt</code>，宿主用例加到既有 <code>WirelessStartupRecoveryTest.kt</code>。设计 §14.1 的类名仅作逻辑分组，不作为文件数。</p>
+<h3>6.1 偏好、迁移与 opt-in</h3>
+<table>
+  <caption>表 6-1 偏好/迁移（AutoConnectSessionTest）</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">优先级</th><th scope="col">Given / When / Then</th><th scope="col">断言点</th><th scope="col">落位</th><th scope="col">关联</th></tr></thead>
+  <tbody>
+    <tr><td class="id">TC-020</td><td>P0</td><td class="gwt"><b>G:</b> 表 5-3 四种升级前状态<br><b>W:</b> <code>ensureMigrated()</code><br><b>T:</b> master/opt_in 分别得到表中值</td><td>四输入四输出逐行断言；旧键未被改写/删除</td><td><code>AutoConnectSessionTest.migratesFourUpgradeStates</code></td><td>§5.3、DA-016</td></tr>
+    <tr><td class="id">TC-021</td><td>P1</td><td class="gwt"><b>G:</b> 同一输入已迁移<br><b>W:</b> 连续调用 <code>ensureMigrated()</code> 两次<br><b>T:</b> 结果不变；不重复写</td><td>prefs 快照前后一致；无新增写</td><td><code>AutoConnectSessionTest.migrationIsIdempotent</code></td><td>DA-016</td></tr>
+    <tr><td class="id">TC-022</td><td>P0</td><td class="gwt"><b>G:</b> <code>NEVER_ASKED</code> + 首次成功<br><b>W:</b> <code>recordSuccess()</code> 两次<br><b>T:</b> 第一次置 master/ENABLED_AUTO 并显示一次性提示；第二次不再开/不再提示</td><td>两次调用后状态；notice_shown 只置一次</td><td><code>AutoConnectSessionTest.optInHappensOnce</code></td><td>FR-011、AC-014、DA-015</td></tr>
+    <tr><td class="id">TC-023</td><td>P0</td><td class="gwt"><b>G:</b> 用户手动关闭（<code>DISABLED_USER</code>）<br><b>W:</b> 之后再次成功<br><b>T:</b> master 保持 false，不自动重开</td><td>opt_in 仍为 DISABLED_USER；master false</td><td><code>AutoConnectSessionTest.disabledUserNeverAutoReenables</code></td><td>FR-012、DA-015、ADR-001</td></tr>
+    <tr><td class="id">TC-024</td><td>P0</td><td class="gwt"><b>G:</b> 首帧成功回调<br><b>W:</b> <code>recordSuccess(mode, now)</code> 后重建 <code>AutoConnectPreferences</code><br><b>T:</b> address/name/last_mode/last_success_at 一致</td><td>四字段值；重启读取一致</td><td><code>AutoConnectSessionTest.successPersistsPreferredFacts</code></td><td>FR-001、AC-001、DA-014</td></tr>
+    <tr><td class="id">TC-025</td><td>P0</td><td class="gwt"><b>G:</b> 失败（可重试与不可重试两路）<br><b>W:</b> 不调用 <code>recordSuccess</code><br><b>T:</b> last_mode/last_success_at 不写</td><td>两路后 prefs 无新增；LastConnectionProblem 只由失败路径写</td><td><code>AutoConnectSessionTest.failureDoesNotRecordSuccess</code></td><td>DA-014</td></tr>
+    <tr><td class="id">TC-026</td><td>P0</td><td class="gwt"><b>G:</b> 调用全部新写 API<br><b>W:</b> 读取 <code>diplay</code> 与 <code>diplay_auto_connect_diag</code> 的全部键<br><b>T:</b> 键集合 ⊆ 白名单；值类型仅 Boolean/String 枚举/Long；与 <code>xcertplay_airplay</code> 凭据键交集为空</td><td>键集合、类型集合、交集断言</td><td><code>AutoConnectSessionTest.newKeysHoldNoCredentials</code></td><td>NFR-004、DA-017</td></tr>
+  </tbody>
+</table>
+<h3>6.2 会话状态机</h3>
+<table>
+  <caption>表 6-2 状态机（AutoConnectSessionTest）</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">优先级</th><th scope="col">Given / When / Then</th><th scope="col">断言点</th><th scope="col">落位</th><th scope="col">关联</th></tr></thead>
+  <tbody>
+    <tr><td class="id">TC-027</td><td>P0</td><td class="gwt"><b>G:</b> 一个已启动会话 <code>sessionId=S</code><br><b>W:</b> 连续两次 <code>onConnected(S)</code> 与两次 <code>onFailure(S)</code><br><b>T:</b> 只有第一次生效；终态后再回调状态不变</td><td>状态序列；监听器回调次数；后续 <code>attemptPermit(S)==null</code></td><td><code>AutoConnectSessionTest.duplicateCallbacksApplyOnce</code></td><td>FR-013、DA-009</td></tr>
+    <tr><td class="id">TC-028</td><td>P0</td><td class="gwt"><b>G:</b> 会话运行中<br><b>W:</b> <code>cancel(OFF)</code> 两次<br><b>T:</b> 幂等；无后续回调；不显示失败；不写 LastConnectionProblem</td><td>状态 Cancelled；监听器不再收到；problem token 不变</td><td><code>AutoConnectSessionTest.cancelIsIdempotentAndSilent</code></td><td>FR-012、DA-010</td></tr>
+    <tr><td class="id">TC-029</td><td>P0</td><td class="gwt"><b>G:</b> 四种取消原因（OFF/FORGOTTEN/MANUAL_TAKEOVER/USB_TAKEOVER）<br><b>W:</b> 触发对应入口<br><b>T:</b> 均 Cancelled、无失败 UI、手动路径不受影响</td><td>四原因各一断言；手动 connect 仍可走</td><td><code>AutoConnectSessionTest.allCancelCausesAreSilent</code></td><td>AC-015、DA-010</td></tr>
+    <tr><td class="id">TC-030</td><td>P0</td><td class="gwt"><b>G:</b> 门禁连续批准 5 次同一事件簇<br><b>W:</b> <code>offer()</code> 5 次<br><b>T:</b> 只创建 1 个会话、<code>start</code> 1 次、<code>sessionId</code> 唯一</td><td>sessionId 集合大小 1；starts 1</td><td><code>AutoConnectSessionTest.fiveOffersMakeOneSession</code></td><td>FR-013、AC-016、DA-013</td></tr>
+    <tr><td class="id">TC-031</td><td>P1</td><td class="gwt"><b>G:</b> 有非终态会话<br><b>W:</b> 新触发 <code>offer()</code><br><b>T:</b> <code>Ignore(RUNNING)</code>，不排队</td><td>返回 reason；会话数仍 1</td><td><code>AutoConnectSessionTest.runningIgnoresNewOffer</code></td><td>DA-013</td></tr>
+    <tr><td class="id">TC-032</td><td>P1</td><td class="gwt"><b>G:</b> 上一终态为 FAILED<br><b>W:</b> <code>retryFromUi()</code><br><b>T:</b> 新 <code>sessionId</code>、新预算；可再试 5 次</td><td>sessionId 变化；budget 重新 begin</td><td><code>AutoConnectSessionTest.retryStartsFreshSession</code></td><td>FR-007、DA-002</td></tr>
+  </tbody>
+</table>
+<h3>6.3 接收器、唤醒与宿主</h3>
+<table>
+  <caption>表 6-3 接收器/唤醒/宿主（PhoneBluetoothReceiverTest、AutoConnectSessionTest、WirelessStartupRecoveryTest、AutoConnectUiTest）</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">优先级</th><th scope="col">Given / When / Then</th><th scope="col">断言点</th><th scope="col">落位</th><th scope="col">关联</th></tr></thead>
+  <tbody>
+    <tr><td class="id">TC-033</td><td>P0</td><td class="gwt"><b>G:</b> 三组：首选 + 开；首选 + master 关；非首选<br><b>W:</b> <code>onReceive(ACTION_ACL_CONNECTED)</code><br><b>T:</b> 只有第一组启动一次；另两组不 startActivity、不产生会话</td><td><code>ContextWrapper</code> 收集的 Intent 列表；<code>state()==Idle</code></td><td><code>PhoneBluetoothReceiverTest.onlyPreferredWithMasterStartsOnce</code></td><td>FR-002/012、AC-003/011、DA-003/012</td></tr>
+    <tr><td class="id">TC-034</td><td>P0</td><td class="gwt"><b>G:</b> 同一次唤醒的 5 条 ACL 广播<br><b>W:</b> 逐条 <code>onReceive</code><br><b>T:</b> 1 个会话、1 个前台通知、1 个 CarPlay 启动</td><td>sessionId 集合大小；通知数；<code>nextStartedActivity</code> 计数</td><td><code>AutoConnectUiTest.eventBurstMakesOneSessionOneNotificationOneScreen</code></td><td>AC-016、G-02</td></tr>
+    <tr><td class="id">TC-035</td><td>P0</td><td class="gwt"><b>G:</b> 自动会话失败；另一路手动热点关闭<br><b>W:</b> 分别走两条路径<br><b>T:</b> 自动路径 <code>getLatestAlertDialog()==null</code>；手动仍弹既有 dialog</td><td>两路 ShadowAlertDialog 断言</td><td><code>AutoConnectUiTest.autoFailureNeverShowsBlockingDialog</code></td><td>NFR-011、AC-009/025、DA-023</td></tr>
+    <tr><td class="id">TC-036</td><td>P1</td><td class="gwt"><b>G:</b> 自动失败终态<br><b>W:</b> 渲染 Home/启动界面<br><b>T:</b> 只有 1 个"重试"入口；无全屏覆盖；首选与设置仍在</td><td>按钮数量/文本；无 Dialog；prefs 不变</td><td><code>AutoConnectUiTest.failureOffersSingleRetry</code></td><td>AC-009、DA-007（FR-007）</td></tr>
+    <tr><td class="id">TC-037</td><td>P1</td><td class="gwt"><b>G:</b> 会话阶段推进<br><b>W:</b> 依次回调 PREPARING/RESOLVING/AWAITING_JOIN/CONNECTING<br><b>T:</b> 每次状态回调后 1 个 tick 内可见文本变化</td><td>文本集合按序变化；<code>shadowOf(Looper).idle()</code> 后断言</td><td><code>AutoConnectUiTest.stageTextUpdatesWithinATick</code></td><td>FR-010、AC-013</td></tr>
+    <tr><td class="id">TC-038</td><td>P1</td><td class="gwt"><b>G:</b> NEEDS_CHOICE 且首选失效<br><b>W:</b> 打开选择页<br><b>T:</b> 首选置灰并说明；候选并列；不自动选择</td><td>控件数量/文本/enabled 状态</td><td><code>AutoConnectUiTest.needsChoiceShowsCandidates</code></td><td>AC-010、SC-008</td></tr>
+    <tr><td class="id">TC-039</td><td>P2</td><td class="gwt"><b>G:</b> 首次安装、无首选<br><b>W:</b> 打开 Home<br><b>T:</b> 显示三件准备事项与"选择 iPhone"入口，不预选</td><td>文本/按钮存在；无 Switch 选中</td><td><code>AutoConnectUiTest.homeEmptyState</code></td><td>SC-001、FR-004</td></tr>
+    <tr><td class="id">TC-040</td><td>P1</td><td class="gwt"><b>G:</b> 首次配对选择一台<br><b>W:</b> <code>choosePhone()</code> 选中<br><b>T:</b> 写首选 address/name；完成后不弹二次选择</td><td>prefs 写入；无第二个选择页</td><td><code>AutoConnectUiTest.firstPairWritesPreferred</code></td><td>AC-001、SC-002</td></tr>
+    <tr><td class="id">TC-041</td><td>P2</td><td class="gwt"><b>G:</b> 首次配对进度中<br><b>W:</b> 点取消<br><b>T:</b> 进入 FIRST_PAIR_CANCELLED，不写首选</td><td>状态/原因；prefs 无首选</td><td><code>AutoConnectUiTest.firstPairCancelKeepsNothing</code></td><td>SC-003、FR-012</td></tr>
+    <tr><td class="id">TC-042</td><td>P1</td><td class="gwt"><b>G:</b> 关闭自动连接确认页<br><b>W:</b> 直接确认，不勾"同时忘记设备"<br><b>T:</b> master=false；首选保留；热点凭据保留</td><td>三项 prefs 断言</td><td><code>AutoConnectUiTest.closeKeepsPreferredAndCredentials</code></td><td>SC-010、AC-015</td></tr>
+    <tr><td class="id">TC-043</td><td>P0</td><td class="gwt"><b>G:</b> 一次终态会话<br><b>W:</b> <code>AutoConnectDiagnostics.report()</code><br><b>T:</b> 固定 8 字段（trigger/backend/stage/attempts/elapsedMs/outcome/failure/tier）按 §9.3 顺序，值来自枚举/整数</td><td>正则逐字段；顺序断言；<code>v=1</code> 前缀</td><td><code>AutoConnectSessionTest.diagnosticsHasEightFixedFields</code></td><td>NFR-009、AC-023、DA-018、G-06</td></tr>
+    <tr><td class="id">TC-044</td><td>P0</td><td class="gwt"><b>G:</b> 记录含已知 SSID/口令/MAC/IP 的会话环境（仅测试侧）<br><b>W:</b> 生成报告行<br><b>T:</b> 行内不出现这些值；不出现 <code>ssid=</code>/<code>pass=</code>/MAC/IP 模式</td><td>全文 4 类正则负例；字段值仅为枚举/数字</td><td><code>AutoConnectSessionTest.diagnosticsLeaksNoIdentifiers</code></td><td>NFR-004、AC-018、DA-018</td></tr>
+    <tr><td class="id">TC-045</td><td>P0</td><td class="gwt"><b>G:</b> 现有 <code>DiagnosticRedactor</code><br><b>W:</b> 既有负例 + AutoConnect 行过 redact（源码规则）<br><b>T:</b> 规则未削弱；AutoConnect 行调用 redact</td><td><code>DiagnosticRedactorTest</code> 全绿；源码断言 <code>redact(</code> 调用</td><td><code>AutoConnectSessionTest.diagnosticsLineGoesThroughRedactor</code></td><td>NFR-004、DA-021</td></tr>
+    <tr><td class="id">TC-046</td><td>P0</td><td class="gwt"><b>G:</b> 宿主有自动会话 <code>sessionId</code><br><b>W:</b> <code>attemptPermit(sessionId)</code> 返回 null<br><b>T:</b> 走 <code>startupRetryStopped</code> 分支，不再调度重连</td><td><code>startupRetryStopped</code>、<code>reconnectScheduled=false</code>、无 <code>pendingReconnect</code></td><td><code>WirelessStartupRecoveryTest.hostStopsWhenPermitNull</code></td><td>AC-008、G-01</td></tr>
+    <tr><td class="id">TC-047</td><td>P0</td><td class="gwt"><b>G:</b> 宿主以自动会话运行，时钟推进到 149 s/150 s/150.001 s<br><b>W:</b> 触发可重试失败<br><b>T:</b> 149 s 前可重启；150 s 后不再重启，UI 显示 attempts/elapsed</td><td><code>ShadowSystemClock.advanceBy</code>；三次边界断言</td><td><code>WirelessStartupRecoveryTest.hostHonorsSessionDeadline</code></td><td>AC-008、NFR-002、G-01</td></tr>
+    <tr><td class="id">TC-048</td><td>P0</td><td class="gwt"><b>G:</b> 手动 <code>connect(true)</code>（<code>sessionId=null</code>）<br><b>W:</b> 触发可重试失败<br><b>T:</b> 不申请许可、预算不介入、行为与 0.2.22 一致</td><td>无 <code>attemptPermit</code> 调用；既有重试计数不变</td><td><code>WirelessStartupRecoveryTest.manualPathBypassesSessionBudget</code></td><td>FR-014、DA-020</td></tr>
+    <tr><td class="id">TC-049</td><td>P1</td><td class="gwt"><b>G:</b> 进程存活 + 会话/宿主存活，流已断<br><b>W:</b> 发送 <code>ACTION_SCREEN_ON</code> / <code>ACTION_USER_PRESENT</code><br><b>T:</b> 触发一次既有恢复；不新建会话</td><td>恢复调用 1 次；sessionId 不变</td><td><code>AutoConnectUiTest.wakeResumesExistingSession</code></td><td>FR-009、AC-012、DA-024</td></tr>
+    <tr><td class="id">TC-050</td><td>P1</td><td class="gwt"><b>G:</b> 无会话/无 Activity<br><b>W:</b> 发送唤醒广播<br><b>T:</b> 尝试用内部令牌启动 Activity；失败写 <code>wake_launch_failed</code> 诊断</td><td>Intent 携带令牌；诊断字段；不伪造运行中</td><td><code>AutoConnectUiTest.wakeWithoutSessionTriesLaunch</code></td><td>FR-009、AC-012、DA-024</td></tr>
+    <tr><td class="id">TC-051</td><td>P1</td><td class="gwt"><b>G:</b> 总开关开/关切换<br><b>W:</b> 注册/注销接收器多次<br><b>T:</b> 注册幂等；关闭后注销；无残留注册</td><td><code>shadowOf(app).registeredReceivers</code> 计数；atomic 复位</td><td><code>AutoConnectUiTest.wakeReceiverRegistersOnceAndUnregisters</code></td><td>R-009、NFR-008、DA-024</td></tr>
+    <tr><td class="id">TC-052</td><td>P0</td><td class="gwt"><b>G:</b> 外部应用向 exported 的 <code>DiPlayActivity</code> 发送自动连接 extra<br><b>W:</b> <code>newIntent</code><br><b>T:</b> 不启动 CarPlay；令牌不匹配即忽略</td><td>无 CarPlay 启动；无会话</td><td><code>ExternalIntentExtrasTest.externalIntentCannotTriggerAutoConnect</code>（既有 + 新增）</td><td>NFR-005、DA-001</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="sec-7">
+<h2>7. 设置 / 翻译 / CI 回归用例（TC-053…TC-060）</h2>
+<h3>7.1 设置落位</h3>
+<table>
+  <caption>表 7-1 设置 IA 与控件（AutoConnectUiTest）</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">优先级</th><th scope="col">Given / When / Then</th><th scope="col">断言点</th><th scope="col">落位</th><th scope="col">关联</th></tr></thead>
+  <tbody>
+    <tr><td class="id">TC-053</td><td>P0</td><td class="gwt"><b>G:</b> 打开设置 → 连接<br><b>W:</b> 查看自动连接卡片<br><b>T:</b> 总开关与子项只在 <code>SettingsCategory.CONNECTION</code> / <code>SettingsSection.AUTOMATIC_CONNECTION</code>；master 关闭时 4 个子项禁用；其他分类页不出现</td><td>分类页文本集合；Switch <code>isEnabled</code>；<code>SettingsInformationArchitecture</code> 唯一映射</td><td><code>AutoConnectUiTest.masterAndChildrenLiveInOneSection</code></td><td>FR-011、NFR-007、AC-014、DA-022</td></tr>
+    <tr><td class="id">TC-054</td><td>P0</td><td class="gwt"><b>G:</b> MANUAL 后端、BYD 车机、ADB READY（G-12 更新后的断言）<br><b>W:</b> 渲染 <code>AUTOMATIC_CONNECTION</code> 卡片与 <code>BYD_ADB</code> 卡片<br><b>T:</b> 自动热点控件在自动连接卡片中<strong>恰好出现 1 次</strong>；BYD_ADB 卡片中 0 个该控件；ADB 授权按钮/状态仍在 BYD_ADB</td><td>两卡片内 <code>auto_car_hotspot_title</code> 的 Switch 计数；ADB 状态文本存在</td><td><code>AutoConnectUiTest.hotspotControlHasOneOwnerAfterMove</code> + G-12 两处改法</td><td>FR-011、AC-014、DA-022、G-12</td></tr>
+    <tr><td class="id">TC-055</td><td>P1</td><td class="gwt"><b>G:</b> 全部 11 套 <code>values*</code><br><b>W:</b> 运行 <code>SettingsTranslationsTest</code><br><b>T:</b> 新增 <code>settings_auto_connect_*</code> 键每套齐全、占位符集合一致、无缺失</td><td>键差集为空；占位符集合相等；locale 数 = 11（含默认）</td><td><code>SettingsTranslationsTest</code> 原样运行（不新增白名单）</td><td>NFR-007、AC-014</td></tr>
+    <tr><td class="id">TC-056</td><td>P0</td><td class="gwt"><b>G:</b> 基线 <code>615b32c</code> 与 build 分支<br><b>W:</b> <code>git diff --name-only</code> 对比三个门禁测试<br><b>T:</b> <code>SettingsTranslationsTest</code>/<code>SettingsLayoutPolicyTest</code>/<code>AdaptiveSettingsUiTest</code> 零改动且全绿</td><td>三文件 diff 为空；三测试 exit 0</td><td><code>SettingsLayoutPolicyTest</code> / <code>AdaptiveSettingsUiTest</code> / <code>SettingsTranslationsTest</code>（CI 回归 + diff 审查）</td><td>NFR-007、AC-014、DA-022</td></tr>
+  </tbody>
+</table>
+<h3>7.3 CI 回归</h3>
+<table>
+  <caption>表 7-3 CI 回归（既有套件）</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">优先级</th><th scope="col">Given / When / Then</th><th scope="col">断言点</th><th scope="col">落位</th><th scope="col">关联</th></tr></thead>
+  <tbody>
+    <tr><td class="id">TC-060</td><td>P0</td><td class="gwt"><b>G:</b> build 分支 + JDK 25 + Android SDK<br><b>W:</b> 运行 §13.2 的 CI 全量命令<br><b>T:</b> 既有无线/USB/接收器/设置测试全绿，lint 与三 APK 构建通过，无新增失败</td><td><code>./gradlew …</code> exit 0；<code>python3 scripts/check_public_tree.py</code> exit 0；无 <code>@Ignore</code></td><td><code>.github/workflows/android.yml</code> 命令（CI）</td><td>AC-017、AC-021、NFR-006、DA-020</td></tr>
+  </tbody>
+</table>
+<h3>7.2 语言 · RTL · 无障碍（单列）</h3>
+<p>11 套语言：默认英语、ar、es、it、ja、ko、ru、tr、uk、zh-rCN、zh-rTW。新增键见设计 §11.3（10 个 <code>settings_auto_connect_*</code>）。</p>
+<table>
+  <caption>表 7-2 语言/RTL/无障碍</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">优先级</th><th scope="col">Given / When / Then</th><th scope="col">断言点</th><th scope="col">落位</th><th scope="col">关联</th></tr></thead>
+  <tbody>
+    <tr><td class="id">TC-057</td><td>P1</td><td class="gwt"><b>G:</b> <code>ar</code> + <code>ldrtl</code>，紧凑/全屏各一<br><b>W:</b> 打开设置自动连接卡片与失败 notice<br><b>T:</b> 行对齐随 start/end 镜像；图标方向正确；文字不截断、不重叠</td><td>截图对比；无 <code>layout_marginLeft/Right</code>；文字不 ellipsize</td><td><code>AutoConnectUiTest.arabicRtlMirrorsRows</code>（截图 artifact：<code>build/reports/autoconnect/rtl-ar-*.png</code>）</td><td>NFR-007/NFR-010、AC-024</td></tr>
+    <tr><td class="id">TC-058</td><td>P1</td><td class="gwt"><b>G:</b> 字体缩放 1.3 与 2.0，紧凑（320dp）与全屏<br><b>W:</b> 打开自动连接卡片/进度/失败<br><b>T:</b> 文字折行不截断；控件同高；无横向溢出</td><td>无 ellipsize；无 <code>*_PX</code> 常量；截图</td><td><code>AutoConnectUiTest.largeFontNeverTruncates</code>（截图 artifact）</td><td>NFR-010、AC-024</td></tr>
+    <tr><td class="id">TC-059</td><td>P1</td><td class="gwt"><b>G:</b> 开启 TalkBack 语义树<br><b>W:</b> 聚焦总开关、子项、失败重试<br><b>T:</b> 读 checked 状态；禁用项可读"需要先开启自动连接"；焦点顺序自上而下；状态不只靠颜色</td><td>contentDescription/text；focus 顺序；<code>isEnabled</code> 语义</td><td><code>AutoConnectUiTest.talkBackSemantics</code></td><td>NFR-010、AC-024</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="sec-8">
+<h2>8. 11 语言与 RTL 专项</h2>
+<h3>8.1 覆盖矩阵</h3>
+<table>
+  <caption>表 8-1 语言/RTL 覆盖</caption>
+  <thead><tr><th scope="col">语言</th><th scope="col">目录</th><th scope="col">方向</th><th scope="col">键/占位符（TC-055）</th><th scope="col">布局截图（TC-057/058）</th></tr></thead>
+  <tbody>
+    <tr><td>默认英语</td><td><code>values</code></td><td>LTR</td><td>基准</td><td>紧凑 + 全屏 + 大字</td></tr>
+    <tr><td>阿拉伯语</td><td><code>values-ar</code></td><td>RTL</td><td>必须</td><td>RTL 行对齐 + 图标方向 + 大字</td></tr>
+    <tr><td>西班牙语</td><td><code>values-es</code></td><td>LTR</td><td>必须</td><td>抽一张长文案</td></tr>
+    <tr><td>意大利语</td><td><code>values-it</code></td><td>LTR</td><td>必须</td><td>抽一张</td></tr>
+    <tr><td>日语</td><td><code>values-ja</code></td><td>LTR</td><td>必须</td><td>紧凑 320dp（既有窄屏测试同款）</td></tr>
+    <tr><td>韩语</td><td><code>values-ko</code></td><td>LTR</td><td>必须</td><td>抽一张</td></tr>
+    <tr><td>俄语</td><td><code>values-ru</code></td><td>LTR</td><td>必须</td><td>抽一张（长词）</td></tr>
+    <tr><td>土耳其语</td><td><code>values-tr</code></td><td>LTR</td><td>必须</td><td>抽一张</td></tr>
+    <tr><td>乌克兰语</td><td><code>values-uk</code></td><td>LTR</td><td>必须</td><td>抽一张</td></tr>
+    <tr><td>简体中文</td><td><code>values-zh-rCN</code></td><td>LTR</td><td>必须</td><td>紧凑 + 全屏</td></tr>
+    <tr><td>繁体中文</td><td><code>values-zh-rTW</code></td><td>LTR</td><td>必须</td><td>紧凑 + 大字</td></tr>
+  </tbody>
+</table>
+<h3>8.2 RTL 专门检查项</h3>
+<ul>
+  <li>只使用既有 <code>start/end</code> 行助手与 <code>setPadding(start, …)</code>；新增代码不得出现 <code>left/right</code> 逻辑边距或图标固定方向。</li>
+  <li>进度文案 <code>settings_auto_connect_attempt_progress</code>（3 个 <code>%d</code>）在 RTL 下数字顺序不倒置；整句不拆成左右两段拼接。</li>
+  <li>"重试"主按钮在 RTL 下位置镜像，但仍是唯一主按钮；不得出现左右两个"重试"。</li>
+  <li>阿拉伯语截图是 build 证据（项目约章 §5.5），H3 由 G-05 槽位复核真机表现。</li>
+</ul>
+</section>
+
+<section id="sec-9">
+<h2>9. 非功能测试设计（NFR-001…011）</h2>
+<p>每条 NFR 给出阈值、数据集、测量方法与环境；不能写成"性能良好"。</p>
+<table>
+  <caption>表 9-1 NFR 测试设计</caption>
+  <thead><tr><th scope="col">NFR</th><th scope="col">阈值</th><th scope="col">方法 / 数据集</th><th scope="col">环境</th><th scope="col">用例</th></tr></thead>
+  <tbody>
+    <tr><td class="id">NFR-001</td><td>冷启动 P50 ≤25 s / P90 ≤40 s；唤醒 P90 ≤20 s</td><td>每槽 <strong>20 次</strong>（G-10）；记录 t0→t4（诊断 elapsedMs/首帧）；按第 90 百分位算 P90；同时报 P50 与 max</td><td>V-01/V-02/V-03（+V-04 旧 iPhone 各 20 次）</td><td>TC-101/102/103/107</td></tr>
+    <tr><td class="id">NFR-002</td><td>≤5 次尝试、≤150 s、退避 ≥2 s 递增</td><td>伪时钟穷举边界（0/149 999/150 000/150 001 ms；第 5/6 次许可）；慢失败/快失败两种轨迹</td><td>JVM + Robolectric</td><td>TC-009…TC-014、TC-046/047</td></tr>
+    <tr><td class="id">NFR-003</td><td>空闲轮询 ≤1 次/分钟；无持续 wakelock；DiPlay alarm 数 0</td><td>空闲 2 h 后 <code>dumpsys batterystats</code>/<code>dumpsys alarm</code>；记录 DiPlay 自身 alarm/wakeup 数</td><td>V-01（G-04 槽）</td><td>TC-016、TC-112</td></tr>
+    <tr><td class="id">NFR-004</td><td>凭据只在 <code>xcertplay_airplay</code>（MODE_PRIVATE）；不进备份/诊断/设置备份</td><td>键清单白名单 + 类型断言 + 报告全文负例；<code>SettingsBackupCodec</code> 白名单不变</td><td>Robolectric + JVM</td><td>TC-026/044/117</td></tr>
+    <tr><td class="id">NFR-005</td><td>自动连接仍完成 iAP2/MFi 认证，不跳步</td><td>源码规则（无认证开关/白名单）+ 既有 MFi 负例；未配对 iPhone 负例归 H3</td><td>JVM + H3</td><td>TC-018/116</td></tr>
+    <tr><td class="id">NFR-006</td><td>Android 7.0+；DiLink 3/4/5；四后端不回归</td><td>lint + 清单/源码规则 + 四后端回归矩阵；安装启动各 1 次</td><td>CI + V-05/V-06/V-08</td><td>TC-019/108/109/111</td></tr>
+    <tr><td class="id">NFR-007</td><td>11 套 values；RTL；唯一 SettingsCategory；不靠改测试</td><td>翻译测试 + IA 测试 + 截图 + diff 审查</td><td>Robolectric + build 截图</td><td>TC-055/056/057/058</td></tr>
+    <tr><td class="id">NFR-008</td><td>100 次循环 0 ANR/崩溃/重复会话/泄漏</td><td>V-03 连续 100 次冷启动/唤醒；记录 ANR/crash/重复 sessionId/线程数</td><td>H3（G-04 槽）</td><td>TC-027/030/051/113</td></tr>
+    <tr><td class="id">NFR-009</td><td>诊断回答 8 字段；不含 SSID/口令/MAC/IP/配对记录</td><td>8 字段固定顺序 + 4 类正则负例 + 人工复核</td><td>JVM/Robolectric + H3</td><td>TC-043/044/045/117</td></tr>
+    <tr><td class="id">NFR-010</td><td>TalkBack 可读；键盘可达；大字/RTL 不截断</td><td>语义树断言 + 截图 + 真机 TalkBack</td><td>Robolectric + H3</td><td>TC-059/057/058/115</td></tr>
+    <tr><td class="id">NFR-011</td><td>自动连接不以全屏阻塞框抢占界面</td><td>ShadowAlertDialog 自动/手动两路；真车倒车影像叠加</td><td>Robolectric + H3</td><td>TC-035/036/114</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="sec-10">
+<h2>10. H3 真车验收脚本（V-01…V-08）</h2>
+<div class="box warn">
+  <span class="t">执行边界</span>
+  H3 只能由人类在真车/真机执行；Agent 不代验、不声称通过。本节的命令是<strong>给人类的操作脚本</strong>，不是本轮已运行的结果。记录必须写"pass / fail / not tested"与证据路径，不得用"应该可以"代替（需求附录 A）。
+</div>
+<h3>10.1 每次记录字段（G-10：每槽 20 次样本）</h3>
+<table>
+  <caption>表 10-1 H3 记录字段</caption>
+  <thead><tr><th scope="col">字段</th><th scope="col">取值</th><th scope="col">说明</th></tr></thead>
+  <tbody>
+    <tr><td>槽位</td><td>V-01…V-08</td><td>见 10.2</td></tr>
+    <tr><td>车型 / DiLink / Android</td><td>如 BYD 汉 EV / DiLink 4.0 / Android 10</td><td>人类填写</td></tr>
+    <tr><td>iPhone / iOS</td><td>型号 + 版本</td><td>≥ iOS 17 与 iOS 14/15 下限机</td></tr>
+    <tr><td>连接方式</td><td>MANUAL_HOTSPOT / WIFI_P2P / EXISTING_WIFI / USB</td><td>本需求 D-005</td></tr>
+    <tr><td>触发源</td><td>COLD_START / APP_OPENED / PHONE_BLUETOOTH / SLEEP_WAKE</td><td>诊断 trigger 字段</td></tr>
+    <tr><td>样本序号</td><td>1…20</td><td>时延类；行为类按 10.2 次数</td></tr>
+    <tr><td>零交互</td><td>Y / N</td><td>是否出现任何选择/确认/输入</td></tr>
+    <tr><td>t0→首帧（ms）</td><td>整数</td><td>诊断 <code>elapsedMs</code>；P50/P90 由 20 个样本算</td></tr>
+    <tr><td>attempts / 失败分类</td><td>整数 / 枚举</td><td>诊断 attempts/failure</td></tr>
+    <tr><td>结果</td><td>pass / fail / not tested</td><td>不写"基本可用"</td></tr>
+    <tr><td>证据</td><td>截图/录屏/诊断导出路径 + SHA</td><td>与候选 SHA 绑定</td></tr>
+  </tbody>
+</table>
+<h3>10.2 槽位与动作</h3>
+<table>
+  <caption>表 10-2 V-01…V-08</caption>
+  <thead><tr><th scope="col">槽位</th><th scope="col">设备/后端</th><th scope="col">必测动作（次数）</th><th scope="col">用例</th><th scope="col">对应 AC</th></tr></thead>
+  <tbody>
+    <tr><td class="id">V-01</td><td>BYD（建议 DiLink 3.0 / Android 9）× MANUAL_HOTSPOT，热点保持开</td><td>冷启动 ×20；休眠唤醒 ×20；行驶中断连恢复 ×20；关闭自动后三触发 ×5；空闲 2 h 功耗 ×1</td><td>TC-101/102/103/112/118</td><td>AC-002/003/012/015/019</td></tr>
+    <tr><td class="id">V-02</td><td>BYD（建议 DiLink 4.0 / Android 10）× MANUAL_HOTSPOT，可自动开热点</td><td>冷启动 ×20；热点关闭→自动开 ×5；热点配置不符/固件拒绝 ×5；倒车影像叠加 ×5</td><td>TC-101/104/105/114</td><td>AC-002/006/007/025</td></tr>
+    <tr><td class="id">V-03</td><td>BYD（建议 DiLink 5.x / Android 12+）× MANUAL_HOTSPOT</td><td>冷启动 ×20；唤醒 ×20；多设备冲突 ×5；100 次循环 ×1 组</td><td>TC-101/102/106/113</td><td>AC-002/010/011/012/022</td></tr>
+    <tr><td class="id">V-04</td><td>任一已支持车型，旧款 iPhone iOS 14/15</td><td>冷启动 ×20；唤醒 ×20</td><td>TC-107</td><td>AC-002/012</td></tr>
+    <tr><td class="id">V-05</td><td>无车机热点/热点不可用 × WIFI_P2P</td><td>自动连接 ×5；既有信道策略不回归 ×5</td><td>TC-108</td><td>AC-021</td></tr>
+    <tr><td class="id">V-06</td><td>可接入外部 Wi-Fi × EXISTING_WIFI</td><td>自动附着 ×5；不创建热点 ×5</td><td>TC-109</td><td>AC-021</td></tr>
+    <tr><td class="id">V-07</td><td>无 ADB 授权的普通车机</td><td>打开 DiPlay 即自动连接 ×5；关闭后不发起 ×5</td><td>TC-110/118</td><td>AC-015</td></tr>
+    <tr><td class="id">V-08</td><td>有线验证车 × USB</td><td>插入线缆 ×5；既有 USB 自动确认 ×5；不发起无线会话</td><td>TC-111</td><td>AC-017/021</td></tr>
+  </tbody>
+</table>
+<h3>10.3 每个槽位的执行脚本</h3>
+<ol>
+  <li>记录设备矩阵（车型 / DiLink / Android / iPhone / iOS / 连接方式）与候选 SHA；清空应用数据或确认是升级态。</li>
+  <li>冷启动：车机上电 → 启动 DiPlay → 计时到 CarPlay 首帧；记录是否零交互、attempts、失败分类；重复 20 次（G-10）。</li>
+  <li>休眠唤醒：锁车/休眠 ≥2 min → 唤醒 → 记录是否无需点开应用、P90 耗时、是否退化为 T-2；重复 20 次。</li>
+  <li>行驶中断连：连接中关闭 iPhone Wi-Fi 或远离 → 观察自动恢复与 attempts/elapsed；重复 20 次。</li>
+  <li>热点场景（V-02）：关闭车机热点 → 触发 → 观察是否自动开启、等待就绪、失败分类；重复 5 次。</li>
+  <li>多设备（V-03）：两台 iPhone 已配对，非首选先连/后连 → 观察是否抢占、是否 NeedsChoice；重复 5 次。</li>
+  <li>关闭自动连接（V-01/V-07）：关闭总开关 → 分别测冷启动/蓝牙到达/打开应用 → 均不发起；重复 5 次。</li>
+  <li>每次失败后导出诊断，按 10.7 的命令与字段核对，人工复核脱敏（TC-117）。</li>
+</ol>
+<h3>10.4 G-04 补充动作槽（H2 已批准）</h3>
+<table>
+  <caption>表 10-3 G-04 三个动作槽</caption>
+  <thead><tr><th scope="col">槽位</th><th scope="col">动作</th><th scope="col">步骤</th><th scope="col">通过标准</th><th scope="col">用例</th></tr></thead>
+  <tbody>
+    <tr><td class="id">G-04a</td><td>空闲 2 h 功耗</td><td>V-01 上 <code>dumpsys batterystats --reset</code> → 保持连接空闲 2 h（不操作）→ 采 <code>batterystats</code>/<code>alarm</code>；记录 DiPlay 自身 alarm/wakeup 与 CPU</td><td>轮询 ≤1 次/分钟；DiPlay 自身 alarm 0；无持续 wakelock</td><td>TC-112 / AC-019 / NFR-003</td></tr>
+    <tr><td class="id">G-04b</td><td>100 次循环</td><td>V-03 上连续 100 次冷启动/唤醒（每次记录 sessionId、线程数、ANR/crash）</td><td>0 ANR、0 崩溃、0 重复会话、无连接/线程泄漏</td><td>TC-113 / AC-022 / NFR-008</td></tr>
+    <tr><td class="id">G-04c</td><td>倒车影像叠加</td><td>V-02 上触发自动失败/成功瞬间挂倒挡，观察屏幕；重复 5 次</td><td>不弹全屏阻塞框、不覆盖倒车界面；提示可延后/忽略</td><td>TC-114 / AC-025 / NFR-011</td></tr>
+  </tbody>
+</table>
+<h3>10.5 G-05 无障碍证据槽（H2 已批准）</h3>
+<table>
+  <caption>表 10-4 G-05 无障碍真机检查</caption>
+  <thead><tr><th scope="col">项</th><th scope="col">步骤</th><th scope="col">通过标准</th><th scope="col">用例</th></tr></thead>
+  <tbody>
+    <tr><td>阿拉伯语 RTL</td><td>系统语言切阿拉伯语，打开设置自动连接卡片、失败 notice、进度页；截紧凑/全屏/大字</td><td>行对齐/图标方向正确，不截断不重叠</td><td>TC-115 / AC-024</td></tr>
+    <tr><td>大字</td><td>字体缩放 1.3 与 2.0，重复上述页面</td><td>折行不截断，控件同高</td><td>TC-115 / AC-024</td></tr>
+    <tr><td>TalkBack</td><td>开启 TalkBack，顺序聚焦总开关、子项、失败重试</td><td>读 checked/禁用原因；焦点顺序合理；状态不只靠颜色</td><td>TC-115 / AC-024</td></tr>
+  </tbody>
+</table>
+<h3>10.6 AC-020 未配对/认证失败负例（G-03 方案 a）</h3>
+<p>V-01…V-03 各做 1 次：用一台<strong>未与车机配对</strong>或已删除配对的 iPhone 尝试接入；期望会话失败并显示认证类原因，<strong>不得进入投屏</strong>。JVM 侧不做 fake-remote，仅保留 TC-018 的源码规则与既有 MFi 负例。记录失败分类与截图（TC-116）。</p>
+<h3>10.7 命令与记录模板</h3>
+<pre><code># 功耗/唤醒（G-04a，V-01；由人类在车机上执行）
+adb shell dumpsys batterystats --reset
+# 等待 2 h（人类等待，不用自动化 sleep 顶替）
+adb shell dumpsys batterystats | grep -i -A 6 diplay
+adb shell dumpsys alarm | grep -i diplay
+adb shell dumpsys deviceidle | grep -i diplay
+
+# 通知/会话（排查用）
+adb shell dumpsys notification --noredact | grep -i -A 4 diplay
+adb shell dumpsys activity processes | grep -i diplay
+
+# 诊断导出后人工复核（AC-018/023/TC-117）
+grep -Ei '(ssid|pass(word|phrase)?|([0-9a-f]{2}:){5}[0-9a-f]{2}|([0-9]{1,3}\.){3}[0-9]{1,3})' diplay-diag-*.txt
+</code></pre>
+<table>
+  <caption>表 10-5 结果记录模板（每次一行）</caption>
+  <thead><tr><th scope="col">slot</th><th scope="col">car</th><th scope="col">DiLink/Android</th><th scope="col">iPhone/iOS</th><th scope="col">mode</th><th scope="col">trigger</th><th scope="col">#</th><th scope="col">zero-touch</th><th scope="col">ms</th><th scope="col">attempts</th><th scope="col">failure</th><th scope="col">result</th><th scope="col">evidence</th></tr></thead>
+  <tbody>
+    <tr><td>V-01</td><td>待填</td><td>待填</td><td>待填</td><td>MANUAL</td><td>COLD_START</td><td>1</td><td>Y</td><td>—</td><td>1</td><td>NONE</td><td>not tested</td><td>待填</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="sec-11">
+<h2>11. 需求 → 设计 → 测试追溯矩阵（RTM）</h2>
+<p>同一套 ID 在需求、设计、测试、验收中复用；不另建平行编号。TC 定义见 §5–§7；H3 用例见 §10。</p>
+<h3>11.1 AC-001…AC-025</h3>
+<table>
+  <caption>表 11-1 AC → 用例 → 证据</caption>
+  <thead><tr><th scope="col">AC</th><th scope="col">用例</th><th scope="col">层级 / 证据</th><th scope="col">判定说明</th></tr></thead>
+  <tbody>
+    <tr><td class="id">AC-001</td><td>TC-024、TC-040</td><td>Robolectric</td><td>首选/地址/名称/方式/时间重启一致</td></tr>
+    <tr><td class="id">AC-002</td><td>TC-101（H3）、TC-033（逻辑）</td><td><span class="pill warn">仅真车判定</span> + JVM 辅助</td><td>零交互与时延必须 V-01…V-04</td></tr>
+    <tr><td class="id">AC-003</td><td>TC-033、TC-034、TC-101</td><td>Robolectric + 真车</td><td>15 s 内一次由 JVM 证明；系统放行由真车</td></tr>
+    <tr><td class="id">AC-004</td><td>TC-035、TC-036、TC-101</td><td>Robolectric + 真车</td><td>无选择/无确认由 Robolectric；系统权限首启由真车</td></tr>
+    <tr><td class="id">AC-005</td><td>TC-003、TC-004、TC-008、TC-039、TC-040</td><td>JVM + Robolectric</td><td>首次/后续互斥、首选失效不改选</td></tr>
+    <tr><td class="id">AC-006</td><td>TC-104</td><td><span class="pill warn">仅真车</span> V-02</td><td>固件/授权决定是否能自动开</td></tr>
+    <tr><td class="id">AC-007</td><td>TC-012、TC-105</td><td>JVM + 真车</td><td>非可重试逻辑由 JVM；固件表现由真车</td></tr>
+    <tr><td class="id">AC-008</td><td>TC-009…TC-014、TC-046、TC-047</td><td>JVM + Robolectric</td><td>预算对象 + 宿主截止端到端（G-01）</td></tr>
+    <tr><td class="id">AC-009</td><td>TC-035、TC-036、TC-037</td><td>Robolectric</td><td>单一重试、无阻塞框、原因可见</td></tr>
+    <tr><td class="id">AC-010</td><td>TC-005、TC-038</td><td>JVM + Robolectric</td><td>≥2 候选不选、NeedsChoice 页</td></tr>
+    <tr><td class="id">AC-011</td><td>TC-033、TC-031、TC-106</td><td>Robolectric + 真车</td><td>不抢占/不第二会话；ACL 顺序真车</td></tr>
+    <tr><td class="id">AC-012</td><td>TC-049、TC-050、TC-102</td><td>Robolectric + 真车</td><td>唤醒路径 JVM；P90 与进程被杀真车</td></tr>
+    <tr><td class="id">AC-013</td><td>TC-037</td><td>Robolectric</td><td>1 tick 内文本变化（3 s 为上限）</td></tr>
+    <tr><td class="id">AC-014</td><td>TC-015、TC-053、TC-054、TC-055、TC-056</td><td>JVM + Robolectric + 截图</td><td>唯一分类、11 语言、门禁测试未削弱</td></tr>
+    <tr><td class="id">AC-015</td><td>TC-028、TC-029、TC-042、TC-110、TC-118</td><td>JVM/Robolectric + 真车</td><td>关闭/忘记后不发起、手动仍可用</td></tr>
+    <tr><td class="id">AC-016</td><td>TC-007、TC-030、TC-031、TC-034</td><td>JVM + Robolectric</td><td>1 会话/1 通知/1 画面</td></tr>
+    <tr><td class="id">AC-017</td><td>TC-048、TC-060、TC-111</td><td>Robolectric + CI + 真车</td><td>USB 行为不变、不发起无线会话</td></tr>
+    <tr><td class="id">AC-018</td><td>TC-044、TC-045、TC-117</td><td>JVM + 真车复核</td><td>报告无 SSID/口令/MAC/IP/配对记录</td></tr>
+    <tr><td class="id">AC-019</td><td>TC-112</td><td><span class="pill warn">仅真车</span> dumpsys</td><td>空闲 2 h 采样</td></tr>
+    <tr><td class="id">AC-020</td><td>TC-018、TC-116</td><td>源码规则 + <span class="pill warn">仅真车负例</span></td><td>未配对必须失败；JVM 不做 fake-remote</td></tr>
+    <tr><td class="id">AC-021</td><td>TC-060、TC-108、TC-109、TC-111</td><td>CI + 真车</td><td>四后端回归、安装启动</td></tr>
+    <tr><td class="id">AC-022</td><td>TC-113</td><td><span class="pill warn">仅真车</span> 100 次</td><td>长跑稳定性</td></tr>
+    <tr><td class="id">AC-023</td><td>TC-043</td><td>JVM/Robolectric</td><td>八字段齐全（G-06 已批准）</td></tr>
+    <tr><td class="id">AC-024</td><td>TC-057、TC-058、TC-059、TC-115</td><td>Robolectric + 截图 + 真机</td><td>RTL/大字/TalkBack</td></tr>
+    <tr><td class="id">AC-025</td><td>TC-035、TC-114</td><td>Robolectric + <span class="pill warn">仅真车</span> 倒车</td><td>无阻塞框；倒车叠加只能 H3</td></tr>
+  </tbody>
+</table>
+<h3>11.2 NFR-001…NFR-011</h3>
+<table>
+  <caption>表 11-2 NFR → 用例</caption>
+  <thead><tr><th scope="col">NFR</th><th scope="col">用例</th><th scope="col">度量证据</th></tr></thead>
+  <tbody>
+    <tr><td class="id">NFR-001</td><td>TC-101、TC-102、TC-103、TC-107</td><td>20 样本 P50/P90 + 诊断 elapsedMs</td></tr>
+    <tr><td class="id">NFR-002</td><td>TC-009…TC-014、TC-046、TC-047</td><td>伪时钟边界 + 宿主截止</td></tr>
+    <tr><td class="id">NFR-003</td><td>TC-016、TC-112</td><td>源码无周期任务 + 2 h dumpsys</td></tr>
+    <tr><td class="id">NFR-004</td><td>TC-026、TC-044、TC-117</td><td>键白名单 + 全文负例 + 人工复核</td></tr>
+    <tr><td class="id">NFR-005</td><td>TC-018、TC-116</td><td>源码规则 + 未配对负例</td></tr>
+    <tr><td class="id">NFR-006</td><td>TC-019、TC-060、TC-108、TC-109、TC-111</td><td>清单/源码规则 + 回归矩阵</td></tr>
+    <tr><td class="id">NFR-007</td><td>TC-055、TC-056、TC-057、TC-058</td><td>11 语言 + IA + 门禁测试 + 截图</td></tr>
+    <tr><td class="id">NFR-008</td><td>TC-027、TC-030、TC-051、TC-113</td><td>单会话/注册 + 100 次循环</td></tr>
+    <tr><td class="id">NFR-009</td><td>TC-043、TC-044、TC-045</td><td>8 字段 + 脱敏 + Redactor</td></tr>
+    <tr><td class="id">NFR-010</td><td>TC-059、TC-057、TC-058、TC-115</td><td>语义树 + RTL/大字截图 + 真机</td></tr>
+    <tr><td class="id">NFR-011</td><td>TC-035、TC-036、TC-114</td><td>Auto/手动两路 dialog + 倒车</td></tr>
+  </tbody>
+</table>
+<h3>11.3 DA-001…DA-024</h3>
+<table>
+  <caption>表 11-3 DA → 用例 → 测试类</caption>
+  <thead><tr><th scope="col">DA</th><th scope="col">用例</th><th scope="col">测试类 / 落位</th><th scope="col">说明</th></tr></thead>
+  <tbody>
+    <tr><td class="id">DA-001</td><td>TC-017、TC-052</td><td>AutoConnectSourceRulesTest / ExternalIntentExtrasTest</td><td>源码规则 + 外部 Intent</td></tr>
+    <tr><td class="id">DA-002</td><td>TC-001、TC-032</td><td>AutoConnectGateTest / AutoConnectSessionTest</td><td>四触发 + 用户重试</td></tr>
+    <tr><td class="id">DA-003</td><td>TC-002、TC-033</td><td>AutoConnectGateTest / PhoneBluetoothReceiverTest</td><td>master 关闭四触发 Ignore</td></tr>
+    <tr><td class="id">DA-004</td><td>TC-006</td><td>AutoConnectGateTest</td><td>16 组合档位矩阵</td></tr>
+    <tr><td class="id">DA-005</td><td>TC-009</td><td>AutoConnectBudgetTest</td><td>第 6 次许可 null（G-07 口径）</td></tr>
+    <tr><td class="id">DA-006</td><td>TC-010</td><td>AutoConnectBudgetTest</td><td>150 001 ms 恒 null</td></tr>
+    <tr><td class="id">DA-007</td><td>TC-011</td><td>AutoConnectBudgetTest</td><td>2/4/8/16 严格递增</td></tr>
+    <tr><td class="id">DA-008</td><td>TC-012</td><td>AutoConnectBudgetTest</td><td>不可重试 attempts=max(1,started)</td></tr>
+    <tr><td class="id">DA-009</td><td>TC-027</td><td>AutoConnectSessionTest</td><td>重复回调一次 + 终态不可转移</td></tr>
+    <tr><td class="id">DA-010</td><td>TC-028、TC-029</td><td>AutoConnectSessionTest</td><td>取消幂等/静默</td></tr>
+    <tr><td class="id">DA-011</td><td>TC-003、TC-004、TC-005</td><td>AutoConnectGateTest</td><td>NeedsChoice + 0 start</td></tr>
+    <tr><td class="id">DA-012</td><td>TC-033</td><td>PhoneBluetoothReceiverTest</td><td>非首选不产生会话</td></tr>
+    <tr><td class="id">DA-013</td><td>TC-007、TC-030、TC-031</td><td>Gate/Session</td><td>去重窗口 + 单会话</td></tr>
+    <tr><td class="id">DA-014</td><td>TC-024、TC-025</td><td>AutoConnectSessionTest</td><td>成功写/失败不写</td></tr>
+    <tr><td class="id">DA-015</td><td>TC-022、TC-023</td><td>AutoConnectSessionTest</td><td>opt-in 一次 / 不再自动开</td></tr>
+    <tr><td class="id">DA-016</td><td>TC-020、TC-021</td><td>AutoConnectSessionTest</td><td>四输入 + 幂等</td></tr>
+    <tr><td class="id">DA-017</td><td>TC-026</td><td>AutoConnectSessionTest</td><td>键白名单/类型/凭据交集</td></tr>
+    <tr><td class="id">DA-018</td><td>TC-043、TC-044</td><td>AutoConnectSessionTest</td><td>8 字段 + 全文负例（G-06）</td></tr>
+    <tr><td class="id">DA-019</td><td>TC-018、TC-116</td><td>SourceRules + H3</td><td>源码规则 + 未配对负例（G-03 方案 a）</td></tr>
+    <tr><td class="id">DA-020</td><td>TC-048、TC-060</td><td>WirelessStartupRecoveryTest + CI</td><td>手动路径不变 + 既有回归</td></tr>
+    <tr><td class="id">DA-021</td><td>TC-045</td><td>AutoConnectSessionTest</td><td>Redactor 未削弱 + 行过 redact</td></tr>
+    <tr><td class="id">DA-022</td><td>TC-053、TC-054、TC-055、TC-056</td><td>AutoConnectUiTest + 三测试</td><td>唯一分类/11 语言/门禁测试</td></tr>
+    <tr><td class="id">DA-023</td><td>TC-035</td><td>AutoConnectUiTest</td><td>自动无对话框 / 手动有</td></tr>
+    <tr><td class="id">DA-024</td><td>TC-049、TC-050、TC-051</td><td>AutoConnectUiTest</td><td>唤醒两路径 + 注册注销</td></tr>
+  </tbody>
+</table>
+<h3>11.4 SC-001…SC-010（原型交互）</h3>
+<table>
+  <caption>表 11-4 SC → 用例</caption>
+  <thead><tr><th scope="col">SC</th><th scope="col">用例</th><th scope="col">覆盖的交互意图</th></tr></thead>
+  <tbody>
+    <tr><td class="id">SC-001</td><td>TC-039</td><td>首次空状态、不预选、三件准备事项</td></tr>
+    <tr><td class="id">SC-002</td><td>TC-040</td><td>只列已配对、显式选择、写首选</td></tr>
+    <tr><td class="id">SC-003</td><td>TC-037、TC-041</td><td>四阶段进度 + 取消</td></tr>
+    <tr><td class="id">SC-004</td><td>TC-030、TC-034、TC-036</td><td>零交互、可取消、最多 5 次/150 s 文案</td></tr>
+    <tr><td class="id">SC-005</td><td>TC-022、TC-024</td><td>成功后一次性告知"下次自动"</td></tr>
+    <tr><td class="id">SC-006</td><td>TC-012、TC-035、TC-105</td><td>热点未开：立即停、说明、一步入口、不弹全屏</td></tr>
+    <tr><td class="id">SC-007</td><td>TC-013、TC-014、TC-036</td><td>预算耗尽显示次数/耗时与单一重试</td></tr>
+    <tr><td class="id">SC-008</td><td>TC-005、TC-038</td><td>多候选不静默、首选置灰</td></tr>
+    <tr><td class="id">SC-009</td><td>TC-015、TC-053、TC-054</td><td>五项控件同卡、热点控件同分类</td></tr>
+    <tr><td class="id">SC-010</td><td>TC-029、TC-042</td><td>关闭确认、忘记设备默认不勾、凭据不删</td></tr>
+  </tbody>
+</table>
+<p><strong>原型偏差 D-1…D-6 的测试覆盖：</strong>D-1（热点控件移动）→ TC-054/G-12；D-2（attempts 与预算两个概念）→ TC-012/TC-043；D-3（取消本次 vs 关闭自动）→ TC-036/TC-042；D-4（选其他设备即改首选）→ TC-038/TC-040；D-5（原型模拟按钮）→ 不实现、无用例；D-6（重试后仍失败的第二次终态）→ TC-032。</p>
+<h3>11.5 孤儿检查</h3>
+<div class="box ok">
+  <span class="t">无孤儿、无空白</span>
+  <ul>
+    <li>本地用例 60 条（TC-001…TC-060）+ H3 18 条（TC-101…TC-118）= <strong>78 条</strong>；每条至少映射一个 AC/NFR/DA/SC。</li>
+    <li>25 条 AC 全部有 TC；其中 AC-006/019/022/025 的最终判定标"仅真车/含真车"，无空白。</li>
+    <li>11 条 NFR 全部有 TC 与度量证据；24 条 DA 全部有 TC；10 条 SC 全部有 TC。</li>
+    <li>反向：无"无需求来源的用例"；每条 TC 的关联列均指向 FR/NFR/AC/DA/SC 中至少一个。</li>
+  </ul>
+</div>
+</section>
+
+<section id="sec-12">
+<h2>12. G-01…G-12 收口矩阵</h2>
+<p>H2 已批准 12 项按建议值生效。本表逐条给出在测试设计中的落点与状态；"规格已收口"指测试侧已无歧义，"待实现"指需要 KAR-05 按 §13 落地后才能执行。</p>
+<table>
+  <caption>表 12-1 预审缺口收口</caption>
+  <thead><tr><th scope="col">G</th><th scope="col">预审问题</th><th scope="col">测试设计落点</th><th scope="col">状态</th></tr></thead>
+  <tbody>
+    <tr><td class="id">G-01</td><td>宿主侧 150 s 截止无断言</td><td>TC-046（许可 null → 停止）、TC-047（149 999/150 001 ms 边界）；§13.3 给出 <code>ShadowSystemClock</code> 端到端方案</td><td><span class="pill ok">规格已收口</span> 待实现执行</td></tr>
+    <tr><td class="id">G-02</td><td>会话级"1 通知/1 画面"未断言</td><td>TC-034：5 条广播 → 1 sessionId、1 通知、1 <code>nextStartedActivity</code></td><td><span class="pill ok">规格已收口</span></td></tr>
+    <tr><td class="id">G-03</td><td>AC-020 的 JVM 负例无接缝</td><td>按 H2 批准方案 (a)：TC-018 源码规则 + TC-116 真车未配对负例；JVM 不做 fake-remote</td><td><span class="pill ok">已收口</span></td></tr>
+    <tr><td class="id">G-04</td><td>H3 动作表缺 3 槽</td><td>§10.4：G-04a 空闲 2 h（TC-112）、G-04b 100 次（TC-113）、G-04c 倒车影像（TC-114）</td><td><span class="pill ok">已收口</span></td></tr>
+    <tr><td class="id">G-05</td><td>AC-024 无障碍证据槽缺失</td><td>§10.5：阿拉伯语 RTL / 大字 / TalkBack 真机检查（TC-115）</td><td><span class="pill ok">已收口</span></td></tr>
+    <tr><td class="id">G-06</td><td>诊断字段数 6/7/8 不一致</td><td>TC-043 固定 8 字段顺序（§13.4 表 13-2）；AC-023 只要求"含六字段"，八字段超集仍满足</td><td><span class="pill ok">已收口</span>（H2 已批八字段）</td></tr>
+    <tr><td class="id">G-07</td><td><code>attemptPermit</code>/<code>noteAttemptStarted</code> 双计数</td><td>§13.5：<code>attemptPermit()</code> 为唯一计数点，<code>noteAttemptStarted()</code> 删除或纯通知；TC-009/TC-012 按此断言</td><td><span class="pill ok">规格已收口</span> 待实现按此</td></tr>
+    <tr><td class="id">G-08</td><td>进程单例无测试重置</td><td>§3.3：实现提供 <code>resetForTest()</code> 或 <code>initialize()</code> 完整重置；TC-027/TC-051 依赖</td><td><span class="pill warn">依赖实现</span></td></tr>
+    <tr><td class="id">G-09</td><td>common Robolectric 2 g 堆上限</td><td>§6：新增 Robolectric 仅 2 类（<code>AutoConnectSessionTest</code>、<code>AutoConnectUiTest</code>）；纯逻辑 4 类走 JVM</td><td><span class="pill ok">已收口</span></td></tr>
+    <tr><td class="id">G-10</td><td>NFR-001 10 样本对 P90 偏弱</td><td>§10.1/表 10-2：时延类每槽 <strong>20 次</strong>，报 P50/P90/max；其余行为类保留 5 次</td><td><span class="pill ok">已收口</span>（H2 已批）</td></tr>
+    <tr><td class="id">G-11</td><td>内部负断言不可行为证明</td><td>TC-017/TC-018/TC-045 以源码规则 + 既有测试实现；评审清单登记人工审查项</td><td><span class="pill ok">已收口</span></td></tr>
+    <tr><td class="id">G-12</td><td>D-1 移动破坏两处 section 级测试</td><td>TC-054 + §13.4 表 13-1 的两文件精确改法；断言计数仍为 1、不删不放宽</td><td><span class="pill ok">已收口</span>（H2 已授权）</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="sec-13">
+<h2>13. A3 开发就绪包</h2>
+<h3>13.1 开发可开工清单</h3>
+<table>
+  <caption>表 13-1 KAR-05 实现顺序与边界</caption>
+  <thead><tr><th scope="col">#</th><th scope="col">产物</th><th scope="col">路径</th><th scope="col">要点</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>纯策略与模型</td><td><code>common/.../autoconnect/AutoConnectTrigger.kt</code>、<code>AutoConnectEnvironment.kt</code>、<code>AutoConnectDecision.kt</code>、<code>AutoConnectGate.kt</code></td><td>纯函数，无 I/O；四触发 + tier + resolveTarget</td></tr>
+    <tr><td>2</td><td>预算</td><td><code>autoconnect/AutoConnectBudget.kt</code></td><td>5/150 s/2-4-8-16；<code>attemptPermit()</code> 唯一计数点（G-07）</td></tr>
+    <tr><td>3</td><td>会话与连接器</td><td><code>autoconnect/AutoConnectSession.kt</code>、<code>AutoConnectConnector.kt</code></td><td>进程单例；终态不可转移；<code>resetForTest()</code>（G-08）</td></tr>
+    <tr><td>4</td><td>偏好与迁移</td><td><code>autoconnect/AutoConnectPreferences.kt</code></td><td>新键白名单；迁移幂等；opt-in 状态机</td></tr>
+    <tr><td>5</td><td>诊断</td><td><code>autoconnect/AutoConnectDiagnostics.kt</code></td><td>8 字段（§13.4 表 13-2）；只接受枚举/整数；过 redact</td></tr>
+    <tr><td>6</td><td>唤醒与控件形态</td><td><code>autoconnect/SleepWakeTrigger.kt</code>、<code>AutoHotspotPlacement.kt</code>、<code>AutoConnectSurface.kt</code></td><td>运行时接收器幂等；4 形态；inline notice</td></tr>
+    <tr><td>7</td><td>接入既有代码</td><td><code>DiPlayActivity.kt</code>、<code>PhoneBluetoothReceiver.kt</code>、<code>BootReceiver.kt</code>、<code>CarPlayHostActivity.kt</code>、<code>WirelessStartupRetryBudget.kt</code></td><td>只加协调层与许可分支；手动/USB 语义不变；不新增权限/组件</td></tr>
+    <tr><td>8</td><td>字符串</td><td><code>common/src/main/res/values*/strings.xml</code></td><td>10 个 <code>settings_auto_connect_*</code> × 11 套；占位符一致</td></tr>
+    <tr><td>9</td><td>测试落地</td><td>新增 6 类 + 更新 4 类（见 13.2/13.4）</td><td>按本文件 TC 规格；不 <code>@Ignore</code>、不放宽断言</td></tr>
+  </tbody>
+</table>
+<div class="box warn">
+  <span class="t">禁止项（违者退回）</span>
+  新增 <code>&lt;uses-permission&gt;</code>/清单组件/前台服务；新增 <code>androidTest</code> 源集；改 <code>SettingsTranslationsTest</code>/<code>SettingsLayoutPolicyTest</code>/<code>AdaptiveSettingsUiTest</code> 的断言；改需求/设计语义；把真车项标成通过；把 <code>sessionId=null</code> 的手动路径接入自动预算。
+</div>
+<h3>13.2 CI 命令与预期</h3>
+<pre><code>./gradlew :shared:testDebugUnitTest :common:testDebugUnitTest :home:testDebugUnitTest \
+  :mobile:lintDebug :home:lintDebug :maphost:lintDebug \
+  :mobile:assembleDebug :home:assembleDebug :maphost:assembleDebug --stacktrace
+python3 scripts/check_public_tree.py</code></pre>
+<p>预期：全部 <code>BUILD SUCCESSFUL</code>；<code>:common</code> 单测含新增 6 类与既有回归；lint 0 新增 error；公共树检查 exit 0。构建后 PR base = <code>develop</code>（D-001 已建，指向 <code>615b32c</code>；分支保护仍待人类开启）。</p>
+<h3>13.3 G-01：宿主侧 150 s 端到端断言方案</h3>
+<p>落位：<code>WirelessStartupRecoveryTest</code> 新增两个用例（TC-046/TC-047）。不新增生产 test-only API；用既有 <code>ReflectionHelpers</code> 与 Robolectric <code>ShadowSystemClock</code> 驱动。</p>
+<pre><code>@Test fun hostStopsWhenSessionPermitIsNull() {
+    // 1) 建立自动会话（RecordingConnector；预算起点 = ShadowSystemClock 当前值）
+    AutoConnectSession.initialize(app, RecordingConnector())
+    // 从 state()/connector 收到的 request 或反射 active.sessionId 取 id（测试局部 helper，不新增生产 API）
+    val id = sessionIdFromTestHelper()
+    // 2) 让 Host 以该 sessionId 运行（生产由 connector 注入；测试用同一入口或反射字段）
+    val host = Robolectric.buildActivity(CarPlayHostActivity::class.java).get()
+    ReflectionHelpers.setField(host, "autoConnectSessionId", id)
+    // 3) 推进到 149 999 ms，可重试失败 -> 仍可调度
+    ShadowSystemClock.advanceBy(Duration.ofMillis(149_999))
+    report(host, RETRYABLE)
+    assertFalse(ReflectionHelpers.getField(host, "startupRetryStopped"))
+    // 4) 推进到 150 001 ms，再失败 -> 必须停
+    ShadowSystemClock.advanceBy(Duration.ofMillis(2))
+    report(host, RETRYABLE)
+    assertTrue(ReflectionHelpers.getField(host, "startupRetryStopped"))
+    assertFalse(ReflectionHelpers.getField(host, "reconnectScheduled"))
+}</code></pre>
+<p>约束：字段名/会话注入方式在 build 时与实际实现对齐；若实现用 Intent extra 传 <code>sessionId</code>，测试改用该 extra，效果等价。<strong>不得为了测试在应用代码里加 <code>if (isTest)</code> 分支或 test-only 公开方法</strong>（<code>resetForTest</code> 属 G-08 已批准的测试接缝，不在此限）。</p>
+<h3>13.4 G-12：两处位置断言的精确改法 + G-06 八字段</h3>
+<table>
+  <caption>表 13-1 G-12 精确改法（断言数量/强度不变）</caption>
+  <thead><tr><th scope="col">文件</th><th scope="col">当前位置</th><th scope="col">改成</th><th scope="col">理由</th></tr></thead>
+  <tbody>
+    <tr><td><code>BydAdbSettingsUiTest.kt</code></td><td><code>render()</code>（:184-188）继续服务 ADB 状态/车辆数据断言</td><td>新增 <code>renderAutomaticConnection()</code>：反射调用新渲染器 <code>automaticConnectionSettings(LinearLayout)</code></td><td>热点控件移到自动连接卡片，BYD_ADB 卡片只留 ADB 状态与一键授权</td></tr>
+    <tr><td>同上</td><td><code>:63</code> <code>page = controls + advanced</code></td><td><code>page = controls + renderAutomaticConnection() + advanced</code></td><td>四个开关"各有唯一 owner"的断言仍成立</td></tr>
+    <tr><td>同上</td><td><code>:65</code> <code>assertEquals(1, switches(controls).size)</code></td><td><code>assertEquals(0, switches(controls).size)</code></td><td>BYD_ADB 不再拥有热点开关</td></tr>
+    <tr><td>同上</td><td><code>:79</code> <code>assertEquals(1, switches(controls).size)</code></td><td><code>assertEquals(0, switches(controls).size)</code> + <code>assertEquals(1, switches(renderAutomaticConnection()).size)</code></td><td>未授权时热点开关仍在自动连接卡片显示 opt-in</td></tr>
+    <tr><td>同上</td><td><code>:90</code> <code>labels(controls).contains(auto_car_hotspot_title)</code></td><td><code>labels(renderAutomaticConnection()).contains(auto_car_hotspot_title)</code></td><td>位置随设计移动，断言强度不变</td></tr>
+    <tr><td><code>CarHotspotSwitchTest.kt</code></td><td><code>:42-71</code> setUp 未安装 BYD 系统包；<code>:64-66</code> 调 <code>renderBydAdbControls</code></td><td>复制 <code>BydAdbSettingsUiTest</code> 的 <code>com.byd.carsettings</code> 系统包桩；<code>controls</code> 改为反射调用 <code>automaticConnectionSettings</code>；如渲染异步则 <code>shadowOf(Looper.getMainLooper()).idle()</code></td><td>连接器/授权流程断言全部保留；只换渲染入口</td></tr>
+    <tr><td>同上</td><td><code>:79-91</code> 授权/开关断言</td><td>不改断言</td><td>开关行为与授权流程不变</td></tr>
+  </tbody>
+</table>
+<p><strong>不削弱证明（H2 授权 <code>2026-11-01T02:42:31Z</code>）：</strong>BYD_ADB 的"1 个 switch"断言改为"BYD_ADB 0 个 + 自动连接卡片 1 个"，两处合计仍为 1；标签断言从旧卡片移到新卡片，仍是"仅 MANUAL 才出现"的等价断言；授权流程断言全部保留。评审用 <code>git diff -U0</code> 逐行核对，<strong>不允许任何 <code>assert*</code> 被删除</strong>；只允许位置参数从 <code>controls</code> 换成 <code>renderAutomaticConnection()</code>、计数 1 拆成 0+1。</p>
+<table>
+  <caption>表 13-2 G-06 诊断八字段（唯一口径）</caption>
+  <thead><tr><th scope="col">#</th><th scope="col">字段</th><th scope="col">取值</th><th scope="col">示例</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><code>trigger</code></td><td>AutoConnectTrigger 枚举</td><td>COLD_START</td></tr>
+    <tr><td>2</td><td><code>backend</code></td><td>WirelessHotspotMode 枚举</td><td>MANUAL_HOTSPOT</td></tr>
+    <tr><td>3</td><td><code>stage</code></td><td>最后阶段枚举</td><td>AWAITING_JOIN</td></tr>
+    <tr><td>4</td><td><code>attempts</code></td><td>整数（<code>max(1,started)</code>）</td><td>3</td></tr>
+    <tr><td>5</td><td><code>elapsedMs</code></td><td>Long</td><td>141002</td></tr>
+    <tr><td>6</td><td><code>outcome</code></td><td>AutoConnectOutcome 枚举</td><td>FAILED</td></tr>
+    <tr><td>7</td><td><code>failure</code></td><td>失败枚举或 NONE</td><td>FIRST_TCP_TIMEOUT</td></tr>
+    <tr><td>8</td><td><code>tier</code></td><td>A/B/C/D</td><td>B</td></tr>
+  </tbody>
+</table>
+<p>整行格式：<code>AutoConnect: v=1 trigger=… backend=… stage=… attempts=… elapsedMs=… outcome=… failure=… tier=…</code>（字段顺序固定、可 grep；仍过 <code>DiagnosticRedactor.redact</code>）。</p>
+<h3>13.5 G-07：预算计数契约收口</h3>
+<ul>
+  <li><code>attemptPermit()</code> 是<strong>唯一</strong>计数点：每次调用消耗 1 次配额并返回本次可用窗口；第 6 次返回 <code>null</code>。</li>
+  <li><code>noteAttemptStarted()</code> 删除，或仅作纯通知（不 +1）；不得与 <code>attemptPermit()</code> 同时计数。</li>
+  <li><code>attempts</code> 显示口径：<code>max(1, started)</code>——不可重试失败发生在尝试开始前也显示 1（与设计 §6-2、§17 D-2 一致）。</li>
+</ul>
+<h3>13.6 首轮预期与测试代码落地</h3>
+<ul>
+  <li>本轮<strong>不提交 <code>.kt</code></strong>（原因见 §1 的口径框）；KAR-05 实现生产类后，KAR-04/QA 按本规格落地测试。</li>
+  <li>首轮预期：<span class="pill warn">红</span>（功能未实现）。不得改期望、不得 <code>@Ignore</code>、不得放宽断言；失败原因必须记录在开发交付说明。</li>
+  <li>测试命名映射：类名/方法名已在本文件给出；实现若需改名，保持 TC 编号可检索。</li>
+</ul>
+<h3>13.7 A3 结论：READY_FOR_DEV</h3>
+<div class="box ok">
+  <span class="t">READY_FOR_DEV（附 3 个实现前提）</span>
+  <ul>
+    <li>前提 1（G-07）：<code>attemptPermit()</code> 唯一计数，<code>attempts=max(1,started)</code>。</li>
+    <li>前提 2（G-08）：<code>AutoConnectSession</code>/<code>SleepWakeTrigger</code> 提供可重复的测试重置（<code>resetForTest()</code> 或 <code>initialize()</code> 完整重置）。</li>
+    <li>前提 3（G-12）：按表 13-1 更新两处位置断言，H2 已授权；不得删/放宽。</li>
+  </ul>
+  另：G-09 的两类合并、G-06 的八字段、G-10 的 20 样本、不新增 <code>androidTest</code> 均已写入本设计。
+</div>
+</section>
+
+<section id="sec-14">
+<h2>14. 覆盖缺口、未自动化项与风险</h2>
+<h3>14.1 仅真车可证（不计入 CI 证据）</h3>
+<ul>
+  <li>AC-002/006/019/022 的最终判定；AC-012 的 P90 与进程被杀；AC-020 的未配对负例；AC-025 的倒车影像叠加。</li>
+  <li>对应 TC-101…TC-118；H3 由人类执行并回填，Agent 不声称通过。</li>
+</ul>
+<h3>14.2 未自动化项与理由</h3>
+<table>
+  <caption>表 14-1 未自动化项</caption>
+  <thead><tr><th scope="col">项</th><th scope="col">为什么</th><th scope="col">替代证据</th></tr></thead>
+  <tbody>
+    <tr><td>未配对 iPhone 负例</td><td>JVM 无真实 iAP2 对端；H2 已批方案 (a)</td><td>TC-018 源码规则 + TC-116 真车</td></tr>
+    <tr><td>系统后台启动/浮窗行为</td><td>Robolectric 不模拟 OEM 限制</td><td>TC-101/102 真车</td></tr>
+    <tr><td>倒车影像叠加</td><td>系统级界面</td><td>TC-114 真车</td></tr>
+    <tr><td>空闲功耗</td><td>需 2 h 真机采样</td><td>TC-112</td></tr>
+    <tr><td>TalkBack 真实朗读/RTL 视觉</td><td>需真实无障碍服务与屏幕</td><td>TC-057/115 + 截图</td></tr>
+  </tbody>
+</table>
+<h3>14.3 风险</h3>
+<ul>
+  <li><strong>R-T1</strong>：20 样本在真车上仍是小样本，P90 受单次异常影响大；记录 max 并保留原始样本。</li>
+  <li><strong>R-T2</strong>：<code>ShadowSystemClock</code> 与真实 <code>elapsedRealtime</code> 的边界（睡眠/唤醒）不完全等价；G-01 证明的是宿主截止逻辑，不是真实计时精度。</li>
+  <li><strong>R-T3</strong>：<code>common</code> 2 g 堆上限；若 CI 仍 OOM，优先合并/分片，不先加堆（加堆属构建配置变更，需范围确认）。</li>
+  <li><strong>R-T4</strong>：测试代码本轮未编译；KAR-05 实现签名若偏离设计，测试落地时需先对齐接口，不得改断言迁就实现。</li>
+  <li><strong>R-T5</strong>：D-001 分支保护未开启，属人类侧仓库设置；不影响测试设计，但影响合并门禁。</li>
+</ul>
+<h3>14.4 回归范围</h3>
+<ul>
+  <li><strong>必跑既有套件</strong>：<code>WirelessStartupRecoveryTest</code>、<code>WirelessStartupControllerTest</code>、<code>CarHotspotOffConnectTest</code>、<code>PhoneBluetoothReceiverTest</code>、<code>ExternalIntentExtrasTest</code>、<code>SettingsTranslationsTest</code>、<code>SettingsLayoutPolicyTest</code>、<code>AdaptiveSettingsUiTest</code>、<code>BydAdbSettingsUiTest</code>、<code>CarHotspotSwitchTest</code>、<code>DiPlayAuthenticationTest</code>、<code>DiagnosticRedactorTest</code>、USB/CH341 既有套件。</li>
+  <li><strong>回归触发</strong>：任何 <code>DiPlayActivity</code>/<code>CarPlayHostActivity</code>/<code>PhoneBluetoothReceiver</code>/<code>BootReceiver</code>/<code>WirelessStartupRetryBudget</code> 改动都必须跑 §13.2 全量命令；只改文档不触发。</li>
+  <li><strong>已知会更新</strong>：<code>BydAdbSettingsUiTest</code>、<code>CarHotspotSwitchTest</code>（G-12 授权，位置断言迁移，不删不放宽）；其余既有测试零改动。</li>
+</ul>
+<h3>14.5 探索式测试章程</h3>
+<table>
+  <caption>表 14-2 探索式章程（每项 30–45 min，真车或 Robolectric 均可）</caption>
+  <thead><tr><th scope="col">章程</th><th scope="col">目标</th><th scope="col">操作</th><th scope="col">观察</th></tr></thead>
+  <tbody>
+    <tr><td>E1 驾驶中被打断</td><td>自动连接不抢界面/不加阻塞</td><td>自动会话中接电话、挂倒挡、切到导航、来回切应用</td><td>是否弹全屏框/抢焦点；失败提示是否延后</td></tr>
+    <tr><td>E2 权限被撤销/授予</td><td>tier 重算不崩溃、不静默降级</td><td>会话中撤销/授予浮窗、蓝牙、写设置权限；再触发</td><td>tier 是否变化；是否给出可解释失败；无 crash</td></tr>
+    <tr><td>E3 双 iPhone 来回连</td><td>不静默改首选、不抢占</td><td>两台已配对 iPhone 交替 ACL 到达；首选在/不在附近</td><td>是否第二会话/第二画面；NeedsChoice 是否出现</td></tr>
+    <tr><td>E4 升级用户</td><td>迁移不改变老用户行为</td><td>旧版本（子开关全关/开过）升级到候选；观察首页与设置</td><td>master/opt_in 是否符合表 5-3；是否擅自开启</td></tr>
+  </tbody>
+</table>
+<h3>14.6 与设计 §14.1 的偏差（已在 H2 预审接受）</h3>
+<ul>
+  <li>设计列 8 个新 Robolectric/测试类；按 G-09 合并为 2 个 Robolectric 类 + 4 个纯 JVM 类，逻辑分组不变。</li>
+  <li>不新增 <code>androidTest</code>（H2 已批）。</li>
+  <li>本轮不提交 <code>.kt</code>，只交可执行规格（本轮 DISPATCH 的范围；未在应用代码加桩）。</li>
+</ul>
+</section>
+
+<section id="sec-15">
+<h2>15. 变更记录</h2>
+<table>
+  <caption>表 15-1 版本历史</caption>
+  <thead><tr><th scope="col">版本</th><th scope="col">日期</th><th scope="col">变更</th><th scope="col">作者</th></tr></thead>
+  <tbody>
+    <tr><td>v1.0.0</td><td>2026-11-01</td><td>首版 A3 测试设计与用例：策略/分层、环境与假件、60 条本地用例 + 18 条 H3 用例、11 语言/RTL 专项、NFR 测试设计、H3 脚本（V-01…V-08 + G-04 三槽 + G-05）、AC/NFR/DA/SC 四张 RTM、G-01…G-12 收口、A3 就绪包（含 G-01 方案与 G-12 精确改法）。</td><td>KAR-04-TestDesigner</td></tr>
+  </tbody>
+</table>
+</section>
+
+<footer>
+  <p>KAR-04-TestDesigner · KAR-3 测试设计与用例 v1.0.0 · 2026-11-01 · 分支 <code>feat/KAR-3-auto-hotspot-connect</code> · H2 基线 <code>089b0ea9</code> · 真车 0 项通过，未声称任何车型可用。</p>
+  <p><a href="#sec-1">返回文档控制</a> · <a href="方案设计文档.html">方案设计文档</a> · <a href="可测性预审记录.html">可测性预审记录</a> · <a href="需求分析文档.html">需求分析文档</a></p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>
