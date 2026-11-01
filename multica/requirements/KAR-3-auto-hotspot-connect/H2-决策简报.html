@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAR-3 自动热点连接 · H2 决策简报 v1.0.0</title>
+<style>
+  :root { --bg:#fff; --fg:#1b1f24; --muted:#5b6572; --line:#d8dee6; --accent:#0b5cad;
+    --warn:#8a4b00; --warn-soft:#fff5e6; --danger:#a11919; --danger-soft:#fdecec;
+    --ok:#1d6b3a; --ok-soft:#eaf6ee; --code:#f4f6f9; }
+  * { box-sizing:border-box; }
+  body { margin:0; color:var(--fg); background:var(--bg);
+    font:15px/1.72 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:1040px; margin:0 auto; padding:30px 24px 70px; }
+  header { border-bottom:2px solid var(--fg); padding-bottom:16px; margin-bottom:22px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  .sub { color:var(--muted); margin:0; }
+  h2 { font-size:20px; margin:36px 0 12px; padding-top:8px; border-top:1px solid var(--line); }
+  h3 { font-size:16px; margin:22px 0 8px; }
+  p { margin:9px 0; }
+  ul,ol { margin:9px 0; padding-left:22px; }
+  li { margin:3px 0; }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; font-size:14px; }
+  th,td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:#f3f6f9; }
+  caption { caption-side:top; text-align:left; font-size:13px; color:var(--muted); padding-bottom:5px; }
+  .box { border:1px solid var(--line); border-left:4px solid var(--accent); background:#fbfcfe; padding:11px 14px; margin:14px 0; }
+  .box.warn { border-left-color:var(--warn); background:var(--warn-soft); }
+  .box.ok { border-left-color:var(--ok); background:var(--ok-soft); }
+  .box .t { font-weight:700; display:block; margin-bottom:3px; }
+  .id { font:600 13px/1.4 ui-monospace,Menlo,monospace; color:var(--accent); }
+  a { color:var(--accent); }
+  .nav { font-size:13px; color:var(--muted); }
+  @media print { .wrap { max-width:none; padding:0; } table,.box { break-inside:avoid; } a { color:inherit; text-decoration:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>KAR-3 支持自动热点连接 · H2 决策简报</h1>
+  <p class="sub">给人类 Owner 的方案评审单页：要确认什么、设计承诺了什么、还差什么。详细论证见 <a href="方案设计文档.html">方案设计文档 v1.0.0</a>。</p>
+  <p class="nav">Issue KAR-3 · <code>feat/KAR-3-auto-hotspot-connect</code> · H1 基线 需求分析文档 v0.1.0 + 交互原型 v0.1.0 @ <code>240fb05</code> · H1 批准 karma 2026-11-01T00:53:44Z</p>
+</header>
+
+<nav class="toc" aria-label="目录" style="border:1px solid var(--line);border-radius:6px;padding:10px 16px;margin:16px 0;font-size:14px">
+  <strong>目录</strong>
+  <ol style="margin:6px 0 0;padding-left:20px">
+    <li><a href="#sec-1">一句话结论</a></li>
+    <li><a href="#sec-2">本轮产物与状态</a></li>
+    <li><a href="#sec-3">H2 需要人类确认的内容</a></li>
+    <li><a href="#sec-4">关键设计数字</a></li>
+    <li><a href="#sec-5">S1 关闭摘要</a></li>
+    <li><a href="#sec-6">给 KAR-04 的预审锚点</a></li>
+    <li><a href="#sec-7">风险与 S2 计划</a></li>
+    <li><a href="#sec-8">仍待人类/真车的事项</a></li>
+    <li><a href="#sec-9">H2 审批栏</a></li>
+  </ol>
+</nav>
+<h2 id="sec-1">1. 一句话结论</h2>
+<p>设计把「四个分散、默认关闭、部分依赖 ADB 的自动化开关」收敛为<strong>一个总开关 + 一个决策点 + 一个有界会话</strong>：四类触发（冷启动 / 打开应用 / 首选 iPhone 蓝牙到达 / 休眠唤醒）都走同一个纯策略门禁；自动会话最多 5 次尝试、150 秒，失败只给一个非阻塞的"重试"；无 ADB 时仍保证"打开 DiPlay 即自动连接"。<strong>不新增权限、不新增清单组件、不改连接协议、不动 USB。</strong></p>
+
+<h2 id="sec-2">2. 本轮产物与状态</h2>
+<table>
+  <caption>表 2-1 交付物</caption>
+  <thead><tr><th scope="col">产物</th><th scope="col">版本</th><th scope="col">状态</th><th scope="col">用途</th></tr></thead>
+  <tbody>
+    <tr><td><a href="方案设计文档.html">方案设计文档.html</a></td><td>v1.0.0</td><td>设计完成，待预审与 H2</td><td>20 章：覆盖矩阵、架构、状态机、ADR、S1 关闭、测试接缝、回滚</td></tr>
+    <tr><td>H2-决策简报.html（本文件）</td><td>v1.0.0</td><td>待 H2</td><td>评审单页与审批栏</td></tr>
+    <tr><td>生产代码 / 测试 / 分支基线</td><td>—</td><td><strong>未改动</strong></td><td>本阶段只写文档；未创建 PR；<code>develop</code> 仍待人类按 D-001 创建</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sec-3">3. H2 需要人类确认的内容</h2>
+<ol>
+  <li><strong>9 篇 ADR</strong>（§15）：默认开启时机、不用轮询、重试预算取值、失败静默、ADB 缺失降级、与既有路径共存、休眠唤醒实现、诊断字段、设置 IA。每篇都有背景/选项/决定/后果/复审条件，不接受可直接给异议。</li>
+  <li><strong>6 条原型偏差</strong>（§17.2）：其中只有 <strong>D-1</strong>（"自动打开车机热点"控件从 <code>BYD_ADB</code> 卡片移入 <code>AUTOMATIC_CONNECTION</code> 卡片，同分类）会改变现有界面位置；其余是文案/动作语义细化。</li>
+  <li><strong>5 项 S1 的设计层关闭证据</strong>（§16.1）：机制 + 可执行验证 + 残余；不是"已跑过"。CI 与真车在 build/H3 执行。</li>
+  <li><strong>可测性锚点</strong>（§14.4 的 DA-001…DA-024）：KAR-04 预审可直接逐条判；不满意就退设计，不在测试阶段补。</li>
+</ol>
+<div class="box ok">
+  <span class="t">H2 不需要决定的事</span>
+  不改变 H1 的任何 FR/NFR/AC/SC（§19 逐条核对）；不需要新的默认值/范围/权限决策；没有 DECISION-REQUEST；真车验收仍是 H3 硬条件，当前 <strong>0 项通过</strong>。
+</div>
+
+<h2 id="sec-4">4. 关键设计数字（H2 可直接核对）</h2>
+<table>
+  <caption>表 4-1 设计承诺</caption>
+  <thead><tr><th scope="col">项</th><th scope="col">值</th><th scope="col">来源/约束</th></tr></thead>
+  <tbody>
+    <tr><td>自动触发源</td><td>4 类（冷启动 / 打开应用 / 首选 iPhone 蓝牙到达 / 休眠唤醒）；"重试"是用户动作，不计入</td><td>FR-002、FR-007</td></tr>
+    <tr><td>尝试上限</td><td>5 次（含首次）</td><td>NFR-002</td></tr>
+    <tr><td>会话总时长上限</td><td>150 s（硬截止）</td><td>NFR-002</td></tr>
+    <tr><td>退避</td><td>2 / 4 / 8 / 16 s，逐次递增</td><td>NFR-002（≥2 s 且递增）</td></tr>
+    <tr><td>慢失败最坏</td><td>3 次尝试、149 s（45+2+45+4+45，剩 1 s 不再开）</td><td>设计算术（§7.7 表 7-7）</td></tr>
+    <tr><td>终态</td><td>SUCCEEDED / FAILED / NEEDS_CHOICE / BLOCKED / CANCELLED，终态后只能新触发开新会话</td><td>§7.1 不变量 I1–I5</td></tr>
+    <tr><td>冲突选择</td><td>无首选 / 首选失效 / ≥2 候选 → NEEDS_CHOICE，<strong>不连接任何一台</strong></td><td>FR-008、A-006、DA-011</td></tr>
+    <tr><td>凭据</td><td>热点 SSID/口令仍只在 <code>xcertplay_airplay</code>（MODE_PRIVATE）；本设计零复制、零日志、零诊断</td><td>NFR-004、DA-017/DA-018/DA-021</td></tr>
+    <tr><td>诊断字段</td><td>8 个固定字段（trigger/backend/stage/attempts/elapsedMs/outcome/failure/tier），枚举/整数</td><td>NFR-009、AC-023</td></tr>
+    <tr><td>权限/组件</td><td>新增 0 个权限、0 个清单组件、0 个前台服务</td><td>A-007、C-1/C-2</td></tr>
+    <tr><td>设置落位</td><td>唯一 <code>SettingsCategory.CONNECTION</code> → <code>SettingsSection.AUTOMATIC_CONNECTION</code>；新增字符串全部 <code>settings_*</code>，11 套</td><td>FR-011、NFR-007、ADR-009</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sec-5">5. S1 关闭摘要（H2 前）</h2>
+<table>
+  <caption>表 5-1 五项 S1 的设计层关闭</caption>
+  <thead><tr><th scope="col">风险</th><th scope="col">关闭机制</th><th scope="col">build/H3 验证</th></tr></thead>
+  <tbody>
+    <tr><td><strong>R-001</strong> 既有连接路径回归</td><td>附加协调层，自动路径只调 <code>connect(true)</code>；USB/手动/后端零改动；宿主只在自动会话时申请重试许可</td><td>CI 全量 + 既有无线/USB 测试全绿 + H3 V-08</td></tr>
+    <tr><td><strong>R-002</strong> 默认开启行为变更</td><td>D-002 已批；仅首次成功后开启；一次性提示；关闭后回到 0.2.22；老用户迁移不擅自开启</td><td>迁移/opt-in 单测；H3 观察</td></tr>
+    <tr><td><strong>R-005</strong> 多设备误连</td><td>自动模式禁止回退选择；只匹配首选；非首选 ACL 忽略</td><td>Gate/Receiver 单测 + H3 V-03</td></tr>
+    <tr><td><strong>R-006</strong> 失败弹窗影响驾驶</td><td>自动路径不调 <code>carHotspotOffDialog()</code>、不新建 AlertDialog；inline notice + 单一重试</td><td><code>ShadowAlertDialog</code> 两路断言 + H3</td></tr>
+    <tr><td><strong>R-007</strong> 11 语言/设置 IA</td><td>唯一分类；新键统一 <code>settings_auto_connect_*</code> 被现有翻译测试覆盖；测试零改动</td><td>三个既有测试原样通过；阿拉伯语/大字截图</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sec-6">6. 给 KAR-04 的预审锚点（四条硬断言）</h2>
+<table>
+  <caption>表 6-1 重点断言</caption>
+  <thead><tr><th scope="col">主题</th><th scope="col">可验证断言</th><th scope="col">ID</th></tr></thead>
+  <tbody>
+    <tr><td>重试预算</td><td>第 6 次许可为 null；150001 ms 后许可恒 null；退避严格 2/4/8/16；不可重试失败 attempts=1 且不消耗预算</td><td>DA-005…DA-008</td></tr>
+    <tr><td>状态机终态</td><td>同一 <code>sessionId</code> 重复回调只生效一次；终态不可再转移；取消幂等且无失败 UI</td><td>DA-009、DA-010</td></tr>
+    <tr><td>冲突选择</td><td>无首选/首选失效/多候选 → <code>NeedsChoice</code>，连接器收到 <strong>0 次</strong> start；非首选 ACL 不产生会话</td><td>DA-011、DA-012</td></tr>
+    <tr><td>凭据不落盘明文</td><td>新键集合不含凭据；诊断只含固定字段；喂入已知 MAC/SSID 后报告行不出现该值；Redactor 未削弱</td><td>DA-017、DA-018、DA-021</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sec-7">7. 风险与 S2 计划</h2>
+<ul>
+  <li><strong>R-003 DiLink 固件差异（S2，H3 前）</strong>：四档降级阶梯 + 诊断 <code>tier</code> + H3 槽位 V-01/V-02/V-03/V-07 分别覆盖"热点已开 / 自动开热点 / 无 ADB"。</li>
+  <li><strong>R-004 后台唤醒受限（S2，H3 前）</strong>：两条唤醒路径 + 明确兜底"打开应用即连"；启动失败写诊断；文案说明系统限制。</li>
+  <li><strong>R-008 诊断凭据（S0，持续）</strong>：枚举字段 + Redactor + 导出前人工复核；不新增外发。</li>
+  <li>设计新增 S2：R-009 运行时接收器生命周期、R-010 两套预算错位、R-011 opt-in 与手动关闭竞态；均有单测/断言计划。</li>
+</ul>
+
+<h2 id="sec-8">8. 仍待人类/真车的事项（不得标通过）</h2>
+<table>
+  <caption>表 8-1 未完成事项</caption>
+  <thead><tr><th scope="col">事项</th><th scope="col">当前状态</th><th scope="col">负责</th></tr></thead>
+  <tbody>
+    <tr><td>D-001 <code>develop</code> 基线创建与保护</td><td><strong>未创建</strong>；分支继续基于 <code>main@615b32c</code>，PR 一律不建</td><td>人类（D-001 已接受建议）</td></tr>
+    <tr><td>H3 验收人与具体设备型号/系统版本</td><td>D-003 已接受建议（3 台 BYD DiLink 3/4/5 + 2 台 iPhone），<strong>具体槽位待填</strong></td><td>人类</td></tr>
+    <tr><td>真车验证</td><td><strong>0 项通过</strong>；V-01…V-08 全部"待验证"</td><td>人类（H3）</td></tr>
+    <tr><td>CI 全量命令</td><td>本提交为纯文档，未触发；build 阶段必须执行</td><td>KAR-05 + CI</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sec-9">9. H2 审批栏</h2>
+<table>
+  <caption>表 9-1 人类结论</caption>
+  <tbody>
+    <tr><th scope="row">材料版本</th><td>方案设计文档 v1.0.0 · H2-决策简报 v1.0.0</td></tr>
+    <tr><th scope="row">H1 绑定</th><td>需求分析文档 v0.1.0 + 交互原型 v0.1.0 @ <code>240fb05</code></td></tr>
+    <tr><th scope="row">提交 SHA</th><td>见本轮 <code>S01 HANDOFF</code> 的 <code>head</code></td></tr>
+    <tr><th scope="row">结论</th><td>☐ 批准　　☐ 驳回　　☐ 有条件批准（条件：________________）</td></tr>
+    <tr><th scope="row">9 篇 ADR</th><td>☐ 接受　　☐ 异议：________________</td></tr>
+    <tr><th scope="row">偏差 D-1…D-6</th><td>☐ 接受　　☐ 异议：________________</td></tr>
+    <tr><th scope="row">S1 关闭证据</th><td>☐ 接受　　☐ 不接受：________________</td></tr>
+    <tr><th scope="row">签字 / 日期</th><td>____________</td></tr>
+  </tbody>
+</table>
+<p><strong>建议</strong>：先派 KAR-04 做可测性预审（逐条判 DA-001…DA-024），预审无阻塞项后再进入 H2 人类方案评审；H2 批准后才允许 KAR-05-Developer 进入 build。</p>
+<p class="nav">KAR-03-Architect · H2-决策简报 v1.0.0 · 2026-11-01 · 分支 <code>feat/KAR-3-auto-hotspot-connect</code></p>
+</div>
+</body>
+</html>
