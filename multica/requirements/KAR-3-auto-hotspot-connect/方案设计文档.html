@@ -161,9 +161,9 @@
   <tbody>
     <tr><th scope="row">Issue</th><td>KAR-3「支持自动热点链接」（<code>01a19291-ef3e-71fd-ba30-a22b82b6b371</code>）</td></tr>
     <tr><th scope="row">项目</th><td>DiPlay（<code>git@github.com:Karma1996/DiPlay.git</code>）</td></tr>
-    <tr><th scope="row">阶段</th><td>design · 方案设计（待 KAR-04 可测性预审 → H2 人类评审）</td></tr>
-    <tr><th scope="row">版本</th><td>v1.0.0</td></tr>
-    <tr><th scope="row">状态</th><td>设计完成，等待可测性预审与 H2；未批准前不进入 build</td></tr>
+    <tr><th scope="row">阶段</th><td>design · 方案设计 + A2 可测性预审完成（待 H2 人类评审）</td></tr>
+    <tr><th scope="row">版本</th><td>v1.0.0（正文 1–19 章）· v1.0.1（KAR-04 预审增补：仅 §20.2 记录与本页版本行，设计语义未变）</td></tr>
+    <tr><th scope="row">状态</th><td>设计完成，A2 预审已通过（附条件，0 阻塞）；等待 H2；未批准前不进入 build</td></tr>
     <tr><th scope="row">作者</th><td>KAR-03-Architect</td></tr>
     <tr><th scope="row">评审</th><td>KAR-04-TestDesigner（可测性预审）→ KAR-01-Lead（路由）→ 人类 Owner（H2）</td></tr>
     <tr><th scope="row">日期</th><td>2026-11-01</td></tr>
@@ -173,7 +173,7 @@
     <tr><th scope="row">D-002 生效值</th><td>首次成功无感连接后默认开启，可在设置关闭（ADR-001）</td></tr>
     <tr><th scope="row">D-005 生效值</th><td>首发 <code>MANUAL_HOTSPOT</code> 验收 + <code>WIFI_P2P</code> / <code>EXISTING_WIFI</code> 回归；<code>LOCAL_ONLY</code> 不承诺</td></tr>
     <tr><th scope="row">Commit SHA</th><td>本文档随提交推送；具体 SHA 见本轮 <code>S01 HANDOFF</code> 评论的 <code>head</code> 字段（分支历史可用 <code>git log --oneline -- multica/requirements/KAR-3-auto-hotspot-connect/</code> 复核）</td></tr>
-    <tr><th scope="row">配套材料</th><td><a href="H2-决策简报.html">H2-决策简报.html</a> · <a href="需求分析文档.html">需求分析文档.html</a> · <a href="交互原型.html">交互原型.html</a> · <a href="开放问题清单.html">开放问题清单.html</a> · <a href="H1-门禁包.html">H1-门禁包.html</a></td></tr>
+    <tr><th scope="row">配套材料</th><td><a href="H2-决策简报.html">H2-决策简报.html</a> · <a href="可测性预审记录.html">可测性预审记录.html</a> · <a href="需求分析文档.html">需求分析文档.html</a> · <a href="交互原型.html">交互原型.html</a> · <a href="开放问题清单.html">开放问题清单.html</a> · <a href="H1-门禁包.html">H1-门禁包.html</a></td></tr>
     <tr><th scope="row">本阶段边界</th><td>只产出设计文档；不写生产代码、不改测试、不动 <code>develop</code>/<code>main</code>、不创建 PR</td></tr>
   </tbody>
 </table>
@@ -1685,6 +1685,7 @@ python3 scripts/check_public_tree.py</code></pre>
   <thead><tr><th scope="col">版本</th><th scope="col">日期</th><th scope="col">变更</th><th scope="col">作者</th></tr></thead>
   <tbody>
     <tr><td>v1.0.0</td><td>2026-11-01</td><td>首版方案设计：组件/调用链、状态机、四触发源与去重、降级阶梯、有界重试与取消、失败与冲突、凭据边界、FR/NFR/SC 覆盖矩阵、9 篇 ADR、S1 关闭证据、设置落位、测试接缝与 DA-001…DA-024、回滚方案。</td><td>KAR-03-Architect</td></tr>
+    <tr><td>v1.0.1</td><td>2026-11-01</td><td>A2 可测性预审增补：填写 §20.2 预审记录；新增 <a href="可测性预审记录.html">可测性预审记录.html</a>（24 DA 判定、25 AC 验证路径、G-01…G-12、androidTest 建议）。1–19 章设计语义未改动。</td><td>KAR-04-TestDesigner</td></tr>
   </tbody>
 </table>
 
@@ -1693,18 +1694,19 @@ python3 scripts/check_public_tree.py</code></pre>
   <caption>表 20-2 预审记录（由 KAR-04 填写）</caption>
   <thead><tr><th scope="col">项</th><th scope="col">结论</th><th scope="col">备注</th></tr></thead>
   <tbody>
-    <tr><td>DA-001…DA-024 是否可执行</td><td>☐ 通过　☐ 需修改　☐ 阻塞</td><td></td></tr>
-    <tr><td>接缝是否足以覆盖 25 AC</td><td>☐ 通过　☐ 需修改　☐ 阻塞</td><td></td></tr>
-    <tr><td>是否需补仪器测试源集（范围问题）</td><td>☐ 通过　☐ 需修改　☐ 阻塞</td><td></td></tr>
-    <tr><td>阻塞项</td><td>☐ 通过　☐ 需修改　☐ 阻塞</td><td></td></tr>
+    <tr><td>DA-001…DA-024 是否可执行</td><td><strong>☑ 通过</strong>（附 2 项澄清）　☐ 需修改　☐ 阻塞</td><td>22 可执行 / 2 需澄清（DA-018、DA-019）/ 0 不可执行。澄清项与最小修复见 <a href="可测性预审记录.html#sec-4">预审记录 §4.1</a>；均不改变设计语义。</td></tr>
+    <tr><td>接缝是否足以覆盖 25 AC</td><td><strong>☑ 通过</strong>（附 12 项补充）　☐ 需修改　☐ 阻塞</td><td>25/25 有验证路径（16 条 JVM/Robolectric/CI 主体，9 条真车 V-0x）。4 条 H3 记录表缺动作槽（AC-019/022/024/025），另 8 项为接缝/契约/测试范围补充（含 G-12：D-1 移动需登记更新 <code>BydAdbSettingsUiTest</code> 与 <code>CarHotspotSwitchTest</code>）；见 <a href="可测性预审记录.html#sec-6">预审记录 §6</a>。</td></tr>
+    <tr><td>是否需补仪器测试源集（范围问题）</td><td><strong>☑ 通过</strong>（建议不新增）　☐ 需修改　☐ 阻塞</td><td>CI 无设备、无 <code>connectedAndroidTest</code>；真车项在模拟器同样不可证；Robolectric 已覆盖可 JVM 证明的交互语义。建议与理由见 <a href="可测性预审记录.html#sec-7">预审记录 §7</a>；范围决定权在 H2 人类。</td></tr>
+    <tr><td>阻塞项</td><td><strong>☑ 通过（0 阻塞）</strong>　☐ 需修改　☐ 阻塞</td><td>可进入 H2。2 项书面澄清 + 12 项覆盖/契约补充要求在 build 前收口；其中 G-03/G-04/G-05/G-06/G-10/G-12 落在 H3 记录表、文档口径或测试范围授权，需 H2 门禁包一并确认。</td></tr>
   </tbody>
 </table>
+<p class="box ok"><strong>总体判定：可用（PASS_WITH_ACTIONS）</strong> — 设计语义与接缝成立，无阻塞项，可进入 H2；附条件见 <a href="可测性预审记录.html">可测性预审记录 v1.0.0</a>。本表由 KAR-04-TestDesigner 于 2026-11-01 填写，仅填预审栏，未改 1–19 章设计语义。</p>
 
 <h3>20.3 H2 人类审批栏</h3>
 <table>
-  <caption>表 20-3 H2 审批（批准即表示接受本文件 v1.0.0 与 H2-决策简报 v1.0.0 作为 build 输入）</caption>
+  <caption>表 20-3 H2 审批（批准即表示接受本文件 v1.0.0 正文、H2-决策简报 v1.0.0 与可测性预审记录 v1.0.0 作为 build 输入）</caption>
   <tbody>
-    <tr><th scope="row">文档版本</th><td>方案设计文档 v1.0.0 · H2-决策简报 v1.0.0</td></tr>
+    <tr><th scope="row">文档版本</th><td>方案设计文档 v1.0.0 正文（v1.0.1 仅预审记录）· H2-决策简报 v1.0.0 · 可测性预审记录 v1.0.0</td></tr>
     <tr><th scope="row">H1 绑定</th><td>需求分析文档 v0.1.0 + 交互原型 v0.1.0 @ <code>240fb05</code></td></tr>
     <tr><th scope="row">提交 SHA</th><td>见本轮 <code>S01 HANDOFF</code> 的 <code>head</code></td></tr>
     <tr><th scope="row">H2 结论</th><td>☐ 批准　　☐ 驳回　　☐ 有条件批准（条件：________________）</td></tr>
@@ -1719,7 +1721,7 @@ python3 scripts/check_public_tree.py</code></pre>
 </section>
 
 <footer>
-  <p>KAR-03-Architect · KAR-3 方案设计 v1.0.0 · 2026-11-01 · 分支 <code>feat/KAR-3-auto-hotspot-connect</code> · 本文档为 H2 评审材料，未经人类批准不得进入 build。</p>
+  <p>KAR-03-Architect · KAR-3 方案设计 v1.0.0（正文）· v1.0.1（KAR-04 预审增补）· 2026-11-01 · 分支 <code>feat/KAR-3-auto-hotspot-connect</code> · 本文档为 H2 评审材料，未经人类批准不得进入 build。</p>
   <p><a class="back" href="#sec-1">返回文档控制</a></p>
 </footer>
 

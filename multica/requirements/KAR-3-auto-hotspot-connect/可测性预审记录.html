@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAR-3 自动热点连接 · 可测性预审记录 v1.0.0</title>
+<style>
+  :root {
+    --bg:#ffffff; --fg:#1b1f24; --muted:#5b6572; --line:#d8dee6;
+    --accent:#0b5cad; --accent-soft:#eaf1f9; --warn:#8a4b00; --warn-soft:#fff5e6;
+    --danger:#a11919; --danger-soft:#fdecec; --ok:#1d6b3a; --ok-soft:#eaf6ee;
+    --code:#f4f6f9;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.72 -apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; }
+  .layout { display:grid; grid-template-columns:290px minmax(0,1fr); max-width:1320px; margin:0 auto; }
+  nav.toc { position:sticky; top:0; align-self:start; max-height:100vh; overflow:auto;
+    padding:22px 16px 32px; border-right:1px solid var(--line); }
+  nav.toc strong { display:block; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  nav.toc ol { margin:0; padding-left:18px; }
+  nav.toc li { margin:3px 0; }
+  nav.toc a { color:var(--fg); text-decoration:none; border-bottom:1px solid transparent; }
+  nav.toc a:hover, nav.toc a:focus-visible { color:var(--accent); border-bottom-color:var(--accent); }
+  main { padding:32px 40px 90px; min-width:0; }
+  header.doc { border-bottom:2px solid var(--fg); padding-bottom:18px; margin-bottom:26px; }
+  h1 { font-size:27px; line-height:1.3; margin:0 0 8px; }
+  .subtitle { color:var(--muted); margin:0; }
+  h2 { font-size:21px; margin:44px 0 14px; padding-top:10px; border-top:1px solid var(--line); }
+  h3 { font-size:17px; margin:26px 0 10px; }
+  p { margin:10px 0; }
+  ul, ol { margin:10px 0; padding-left:24px; }
+  li { margin:4px 0; }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:13.5px; }
+  th, td { border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top; }
+  th { background:#f3f6f9; font-weight:600; }
+  caption { caption-side:top; text-align:left; font-size:13px; color:var(--muted); padding-bottom:6px; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; font-weight:600; border:1px solid transparent; white-space:nowrap; }
+  .ok { background:var(--ok-soft); color:var(--ok); border-color:#c6e6d0; }
+  .warn { background:var(--warn-soft); color:var(--warn); border-color:#f3ddb8; }
+  .bad { background:var(--danger-soft); color:var(--danger); border-color:#f2c9c9; }
+  .info { background:var(--accent-soft); color:var(--accent); border-color:#cfe0f0; }
+  .box { border:1px solid var(--line); border-left:4px solid var(--accent); background:#fbfcfe; padding:12px 16px; margin:16px 0; }
+  .box.warn { border-left-color:var(--warn); background:var(--warn-soft); }
+  .box.ok { border-left-color:var(--ok); background:var(--ok-soft); }
+  .box .t { font-weight:700; display:block; margin-bottom:4px; }
+  .id { font:600 13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--accent); }
+  @media (max-width:900px) { .layout { grid-template-columns:1fr; } nav.toc { position:static; max-height:none; border-right:0; border-bottom:1px solid var(--line); } main { padding:22px 18px 60px; } }
+  @media print { nav.toc { display:none; } .layout { display:block; } main { padding:0; } h2 { break-after:avoid; } table { break-inside:auto; } tr { break-inside:avoid; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="目录">
+  <strong>目录</strong>
+  <ol>
+    <li><a href="#sec-1">文档控制</a></li>
+    <li><a href="#sec-2">预审范围、输入与方法</a></li>
+    <li><a href="#sec-3">总体判定</a></li>
+    <li><a href="#sec-4">DA-001…DA-024 逐条判定</a></li>
+    <li><a href="#sec-5">AC-001…AC-025 验证路径</a></li>
+    <li><a href="#sec-6">覆盖缺口与最小补充</a></li>
+    <li><a href="#sec-7">是否新增 androidTest 源集</a></li>
+    <li><a href="#sec-8">§20.2 回填与自检</a></li>
+    <li><a href="#sec-9">变更记录</a></li>
+  </ol>
+</nav>
+<main>
+<header class="doc">
+  <h1>KAR-3 自动热点连接 · 可测性预审记录</h1>
+  <p class="subtitle">A2 · design 阶段 · KAR-04-TestDesigner · v1.0.0 · 2026-11-01</p>
+</header>
+
+<section id="sec-1">
+<h2>1. 文档控制</h2>
+<table>
+  <caption>表 1-1 文档元数据</caption>
+  <tbody>
+    <tr><th scope="row">Issue</th><td>KAR-3「支持自动热点链接」（<code>01a19291-ef3e-71fd-ba30-a22b82b6b371</code>）</td></tr>
+    <tr><th scope="row">项目</th><td>DiPlay（<code>git@github.com:Karma1996/DiPlay.git</code>）</td></tr>
+    <tr><th scope="row">阶段</th><td>design · A2 可测性预审（H2 前最后一道技术闸）</td></tr>
+    <tr><th scope="row">版本</th><td>v1.0.0（首版）</td></tr>
+    <tr><th scope="row">作者</th><td>KAR-04-TestDesigner</td></tr>
+    <tr><th scope="row">日期</th><td>2026-11-01</td></tr>
+    <tr><th scope="row">分支</th><td><code>feat/KAR-3-auto-hotspot-connect</code></td></tr>
+    <tr><th scope="row">设计基线</th><td><a href="方案设计文档.html">方案设计文档 v1.0.0</a> + <a href="H2-决策简报.html">H2-决策简报 v1.0.0</a>，提交 <code>9b1a1a055f38b4b1d5bde63a79429502d0453b00</code></td></tr>
+    <tr><th scope="row">需求基线</th><td><a href="需求分析文档.html">需求分析文档 v0.1.0</a> + <a href="交互原型.html">交互原型 v0.1.0</a>，提交 <code>240fb053986814ff679cab44839d52f933939cef</code>（H1 已由 karma 于 <code>2026-11-01T00:53:44Z</code> 文字批准）</td></tr>
+    <tr><th scope="row">输入</th><td>§3 FR/NFR/SC 覆盖矩阵、§7 状态机与不变量、§8 凭据边界、§9.3 诊断字段、§11 设置 IA、§12 失败与冲突、§14 测试接缝与 DA-001…DA-024、§16 S1 关闭、§17 偏差；需求 §7 AC-001…AC-025、附录 A H3 清单</td></tr>
+    <tr><th scope="row">判定口径</th><td>可执行 = 存在具体接缝/假件且能写出通过/失败明确的断言；需澄清 = 断言方向成立但当前文本缺少唯一口径或可注入点，需设计方一句书面澄清；不可执行 = 无可观测点且无法以最小补充解决。禁止"待定"。</td></tr>
+    <tr><th scope="row">本阶段边界</th><td>只填方案设计 §20.2 并新增本预审记录；不改 1–19 章设计语义、不改需求、不写生产代码/测试、不动 <code>develop</code>/<code>main</code>、不建 PR</td></tr>
+    <tr><th scope="row">Commit SHA</th><td>本文件随本轮提交推送；具体 SHA 见 <code>S01 HANDOFF</code> 的 <code>head</code> 字段（可用 <code>git log --oneline -- multica/requirements/KAR-3-auto-hotspot-connect/</code> 复核）</td></tr>
+  </tbody>
+</table>
+<div class="box">
+  <span class="t">证据口径（不冒充执行）</span>
+  本轮预审是<strong>静态核对</strong>：逐文件读取设计文档、需求 AC 与仓库现有源码/测试，核对接缝形态是否真实存在。本轮<strong>未运行</strong> Gradle 测试，也不声称任何用例已通过；文中的"可执行"指"测试可以这样写且当前仓库具备该能力"，不是"已经跑过"。
+</div>
+</section>
+
+<section id="sec-2">
+<h2>2. 预审范围、输入与方法</h2>
+<h3>2.1 预审了什么</h3>
+<ul>
+  <li><strong>24 条设计断言 DA-001…DA-024</strong>：逐条判"可执行 / 需澄清 / 不可执行"，并给出可落地的测试类与假件。</li>
+  <li><strong>25 条验收标准 AC-001…AC-025</strong>：逐条给出验证层级（单测 / Robolectric / 仪器 / 真车 V-0x / 人工）与证据来源；无路径的标缺口。</li>
+  <li><strong>11 个测试接缝</strong>（§14.1 表 14-1）：核对是否足以覆盖 25 AC，是否需要在 build 前补可注入点或假件。</li>
+  <li><strong>"是否新增 <code>androidTest</code> 源集"</strong>：只给建议与理由，范围决定权在 H2 人类。</li>
+</ul>
+<h3>2.2 怎么核的</h3>
+<p>对每条断言，回到它声称的落点逐文件核对：<code>PhoneBluetoothReceiver.kt</code>、<code>WirelessStartupRetryBudget.kt</code>、<code>DiPlayActivity.kt</code>（<code>AUTOMATIC_CONNECTION</code> 段与诊断入口）、<code>DiagnosticRedactor.kt</code>、<code>CarHotspotOffConnectTest.kt</code>、<code>PhoneBluetoothReceiverTest.kt</code>、<code>ExternalIntentExtrasTest.kt</code>、<code>WirelessStartupRecoveryTest.kt</code>、<code>AdaptiveSettingsUiTest.kt</code>、<code>SettingsTranslationsTest.kt</code>、<code>SettingsLayoutPolicyTest.kt</code>、<code>DiPlayAuthenticationTest.kt</code>、<code>common/build.gradle.kts</code>、<code>.github/workflows/android.yml</code>、<code>common/src/main/res/values*</code>。凡设计引用的行号/类名，均以当前基线复核；不一致的写在 §4.2。</p>
+<div class="box warn">
+  <span class="t">已核实的关键事实</span>
+  <ul>
+    <li>仓库当前<strong>没有 <code>androidTest</code> 源集</strong>（只有 <code>shared/src/test</code>、<code>common/src/test</code>、<code>samples/home/src/test</code>），CI 也不跑 connected 测试。</li>
+    <li><code>common</code> 模块已启用 Robolectric 4.17 + <code>unitTests.isIncludeAndroidResources = true</code>，现有测试已能驱动 <code>DiPlayActivity</code>、<code>PhoneBluetoothReceiver</code>、设置页、<code>ShadowAlertDialog</code>；这是本设计"JVM 覆盖交互语义"的现实基础。</li>
+    <li><code>SettingsSection.AUTOMATIC_CONNECTION</code> 及其卡片<strong>基线已存在</strong>（<code>DiPlayActivity.kt:119</code>、<code>:1778</code>），设计 §11/FR-011 中"新增该卡片/该段"的表述应收窄为"在既有段内新增总开关与子项"。</li>
+    <li>11 套 <code>values*</code> 目录各含 <strong>230 个 <code>settings_*</code> 键</strong>；<code>SettingsTranslationsTest</code> 扫描模块 <code>src/main/res</code> 全部 xml，新键用 <code>settings_auto_connect_*</code> 前缀确实会被 11 语言门禁自动覆盖。</li>
+    <li><code>common/build.gradle.kts</code> 把单测堆上限设为 <code>2g</code>，并注明"1g 时再加一个 Robolectric 类就会 OOM"——新增 6 个 Robolectric 测试类需要按这条现实做合并（见 G-09）。</li>
+    <li><strong>D-1 的控件移动会破坏两个既有 section 级测试</strong>：<code>BydAdbSettingsUiTest</code>（直接调用 <code>renderBydAdbControls</code> 并在其中查找 <code>auto_car_hotspot_title</code>，见 <code>:68/:90</code>）与 <code>CarHotspotSwitchTest</code>（<code>switchFor(auto_car_hotspot_title)</code> 只在 BYD_ADB 渲染结果里找，见 <code>:274-275</code>）。设计 §10.4/§16 R-007 未登记这两个文件，见 G-12。</li>
+  </ul>
+</div>
+</section>
+
+<section id="sec-3">
+<h2>3. 总体判定</h2>
+<div class="box ok">
+  <span class="t">结论：可用（PASS_WITH_ACTIONS）· 无阻塞项 · 可进入 H2</span>
+  <p>设计语义成立，11 个接缝足以承载 25 条 AC 的 JVM/Robolectric/CI 部分；没有需要退回设计重做的阻塞项。附 <strong>2 项须书面澄清</strong>（DA-018、DA-019）与 <strong>12 项覆盖/契约补充</strong>（G-01…G-12），全部可在 build 前以"设计勘误 + 测试设计落项"收口，<strong>不改变 FR/NFR/AC 语义，不扩 scope</strong>。</p>
+</div>
+<table>
+  <caption>表 3-1 判定汇总</caption>
+  <thead><tr><th scope="col">维度</th><th scope="col">结果</th><th scope="col">说明</th></tr></thead>
+  <tbody>
+    <tr><td>DA-001…DA-024</td><td><span class="pill ok">22 可执行</span> <span class="pill warn">2 需澄清</span> <span class="pill bad">0 不可执行</span></td><td>需澄清：DA-018（诊断"喂入"无字符串入参、字段集 6/7/8 不一致）、DA-019（AC-020 的 JVM 负例无接缝）。其余 22 条均可写出明确断言。</td></tr>
+    <tr><td>25 条 AC</td><td><span class="pill ok">25/25 有验证路径</span></td><td>16 条可在 JVM/Robolectric/CI 证明主体；9 条最终判定必须由真车 V-0x 承载（H3 硬条件）。其中 4 条在 H3 记录表缺动作槽（AC-019/022/024/025）。</td></tr>
+    <tr><td>11 个接缝覆盖度</td><td><span class="pill ok">足够</span>（附 4 项最小补充）</td><td>无需新增"仪器"类接缝；需补的是宿主侧截止断言、通知/画面计数、测试重置契约、新 Robolectric 类的合并（G-01/02/08/09）。</td></tr>
+    <tr><td>androidTest 源集</td><td><span class="pill info">建议不新增</span></td><td>CI 无设备、真车项在模拟器同样不可证；Robolectric 已覆盖可 JVM 证明的交互。详见 §7。</td></tr>
+    <tr><td>阻塞项</td><td><span class="pill ok">0</span></td><td>无"不可执行且无法最小补充"的项；无需求缺口回流。</td></tr>
+  </tbody>
+</table>
+<p><strong>给 H2 的一句话：</strong>方案可测，按 <a href="#sec-6">§6</a> 的 12 项补充在 build 前收口即可；其中 G-03/G-04/G-05/G-06/G-10/G-12 需要 H2 在人类门禁包里一并确认（它们落在 H3 记录表、文档口径或测试范围授权上，不在代码里）。</p>
+</section>
+
+<section id="sec-4">
+<h2>4. DA-001…DA-024 逐条判定</h2>
+<p>判定依据是"当前仓库是否存在该接缝 + 断言是否只有一种读法"。可执行项写明测试类与假件；需澄清项在 §4.1 给出最小修复。</p>
+<table>
+  <caption>表 4-1 设计断言可执行性</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">判定</th><th scope="col">可执行路径 / 依据</th><th scope="col">备注</th></tr></thead>
+  <tbody>
+    <tr><td class="id">DA-001</td><td><span class="pill ok">可执行</span>（含人工审查）</td><td>路由测试：用 <code>AutoConnectConnector</code> 假件（§14.1 <code>RecordingConnector</code>）断言自动路径只经门禁；"零绕过"另以源码规则扫描 <code>connect(true)</code> 调用点。</td><td>"不存在绕过"是架构负断言，测试只能以"行为 + 源码规则"近似，不能证明绝对无绕过（G-11）。</td></tr>
+    <tr><td class="id">DA-002</td><td><span class="pill ok">可执行</span></td><td><code>AutoConnectGateTest</code>：四枚举各一用例 + <code>RETRY_BUTTON</code> 单独用例；纯函数无 Android 依赖。</td><td>与 §7.2 表 7-2 的 T-1…T-5 对齐。</td></tr>
+    <tr><td class="id">DA-003</td><td><span class="pill ok">可执行</span></td><td><code>AutoConnectGateTest</code>（master=false → 四触发 <code>Ignore(OFF)</code>）+ <code>PhoneBluetoothReceiverTest</code>（<code>ContextWrapper</code> 拦截 <code>startActivity</code>，现有范式见 <code>PhoneBluetoothReceiverTest.kt</code>）。</td><td>需在接收器首个分支加 master 读取；测试可直接复用现有 <code>reset()</code> 清理 prefs。</td></tr>
+    <tr><td class="id">DA-004</td><td><span class="pill ok">可执行</span></td><td><code>AutoConnectGateTest</code> 4×4 决策表（A/B/C/D × 四触发），断言 <code>tier()</code> 与每个触发是否 <code>Start/Ignore/Blocked</code>。</td><td>需把 §12.2 的档位条件翻成表驱动输入；C 档 T-2 可用单独一行。</td></tr>
+    <tr><td class="id">DA-005</td><td><span class="pill ok">可执行</span>（契约需收口）</td><td><code>AutoConnectBudgetTest</code>：循环调用 <code>attemptPermit()</code>，第 6 次返回 <code>null</code>。</td><td><code>attemptPermit()</code>（表 6-1：每次消耗配额）与 <code>noteAttemptStarted()</code>（注释：计数 +1）双计数冲突，见 G-07 / R-010。</td></tr>
+    <tr><td class="id">DA-006</td><td><span class="pill ok">可执行</span></td><td>伪时钟 <code>nowElapsed</code> 推进到 <code>150_001 ms</code> 后，<code>attemptPermit()</code> 恒 <code>null</code>（含继续推进多个 tick）。</td><td>只证明预算对象；宿主是否在截止后真正停止重试没有断言（G-01）。</td></tr>
+    <tr><td class="id">DA-007</td><td><span class="pill ok">可执行</span></td><td>断言 <code>backoffMillis()</code> 依次返回 <code>2000/4000/8000/16000</code>，逐次严格递增，且预算不足时返回 <code>null</code>。</td><td>需同时断言"第 5 次尝试后不再发退避"。</td></tr>
+    <tr><td class="id">DA-008</td><td><span class="pill ok">可执行</span></td><td>预算/会话负例：不可重试失败立即终态、<code>attempts=1</code>、后续 <code>attemptPermit()</code> 返回 <code>null</code> 且不再 <code>start</code>。</td><td>需固定口径：未真正开始的失败也显示 <code>attempts=1</code>（§6-2 与 §17 D-2 已暗示，建议写成 <code>attempts=max(1, started)</code>）。</td></tr>
+    <tr><td class="id">DA-009</td><td><span class="pill ok">可执行</span></td><td><code>AutoConnectSessionTest</code>：同一 <code>sessionId</code> 连续两次 <code>onFailure</code>/<code>onConnected</code> 只生效一次；终态后再回调状态不变。</td><td>进程单例跨用例会残留，需要重置契约（G-08）。</td></tr>
+    <tr><td class="id">DA-010</td><td><span class="pill ok">可执行</span></td><td><code>cancel()</code> 连续两次；监听器记录无后续回调；<code>LastConnectionProblem</code> 与诊断均无失败写入。</td><td>取消幂等语义与表 7-8 一致。</td></tr>
+    <tr><td class="id">DA-011</td><td><span class="pill ok">可执行</span></td><td>门禁三路（无首选 / 首选失效 / ≥2 候选）均返回 <code>NeedsChoice</code>；<code>RecordingConnector.start</code> 计数为 0。</td><td>直接覆盖 FR-008(b) 与 R-005 的"不静默选择"。</td></tr>
+    <tr><td class="id">DA-012</td><td><span class="pill ok">可执行</span>（行为级）</td><td><code>PhoneBluetoothReceiverTest</code>：非首选地址不 <code>startActivity</code>；<code>AutoConnectSession.state()</code> 保持 <code>Idle</code>。</td><td>"不进入门禁"是内部调用，不可直接断言；以可观察副作用（无启动、无会话、无诊断）等价证明（G-11）。</td></tr>
+    <tr><td class="id">DA-013</td><td><span class="pill ok">可执行</span></td><td>连续 <code>offer()</code> 5 次 → 1 个 <code>sessionId</code>、<code>RecordingConnector.start</code> 1 次。</td><td>只证明会话数；通知/画面计数见 G-02。</td></tr>
+    <tr><td class="id">DA-014</td><td><span class="pill ok">可执行</span></td><td><code>AutoConnectPreferencesTest</code>：成功写 <code>phone_last_mode</code>/<code>phone_last_success_at</code>；失败两路均不写。</td><td><code>recordSuccess()</code> 已带 <code>nowMillis</code> 参数，可直接注入。</td></tr>
+    <tr><td class="id">DA-015</td><td><span class="pill ok">可执行</span></td><td><code>NEVER_ASKED</code> 首次成功 → <code>ENABLED_AUTO</code>；第二次成功不重复；<code>DISABLED_USER</code> 后再成功不开启。</td><td>覆盖 ADR-001 的三条状态路径。</td></tr>
+    <tr><td class="id">DA-016</td><td><span class="pill ok">可执行</span></td><td>表 5-3 四输入 → 四输出；连续调用 <code>ensureMigrated()</code> 两次结果不变（幂等）。</td><td>只读旧键、只写新键的边界也可一并断言。</td></tr>
+    <tr><td class="id">DA-017</td><td><span class="pill ok">可执行</span></td><td>调用全部写入 API 后断言 <code>prefs.all.keys ⊆</code> 测试侧白名单；与凭据键（<code>xcertplay_airplay</code>）交集为空。</td><td>白名单需测试侧维护；设计未给"新键常量"，不影响执行。</td></tr>
+    <tr><td class="id">DA-018</td><td><span class="pill warn">需澄清</span></td><td>可写：报告行按固定顺序匹配枚举/整数、用正则断言不含 MAC/IP/SSID/口令模式；但"喂入含已知 MAC/SSID 的环境"没有字符串入参（<code>AutoConnectRecord</code> 只有枚举/整数）。</td><td>字段集多处不一致（AC-023 六、§14.2 六/七、§5.2 七、§6.3 七 + at、§9.3 八）。最小修复见 §4.1 与 G-06。</td></tr>
+    <tr><td class="id">DA-019</td><td><span class="pill warn">需澄清</span></td><td>"无认证开关/无白名单"可用源码规则审查；"未配对设备负例"在 JVM 上没有可注入的远端对端，AC-020 的"单测"部分没有落点。</td><td>需明确自动化边界：源码规则 + H3 V-0x，或新增 fake-remote 接缝。最小修复见 §4.1 与 G-03。</td></tr>
+    <tr><td class="id">DA-020</td><td><span class="pill ok">可执行</span></td><td>既有 <code>WirelessStartupRecoveryTest</code>/<code>CarHotspotOffConnectTest</code> 全绿 + 新增断言：<code>sessionId=null</code> 时不申请许可、会话不介入。</td><td>回归基线已存在，测试可直接加用例。</td></tr>
+    <tr><td class="id">DA-021</td><td><span class="pill ok">可执行</span>（含人工审查）</td><td>既有 <code>DiagnosticRedactorTest</code> 全绿 + 源码审查"AutoConnect 行调用 <code>redact</code>"。</td><td>"行仍过 redact"无字符串入参，行为上无法证明，只能审查（G-11）。</td></tr>
+    <tr><td class="id">DA-022</td><td><span class="pill ok">可执行</span>（含人工审查）</td><td><code>git diff --name-only</code> 证明三个门禁测试零改动；三测试原样通过；<code>SettingsTranslationsTest</code> 实际扫描 11 套、每套 230 个 <code>settings_*</code> 键。已核实 <code>AdaptiveSettingsUiTest.settingsLiveWhereDriversLookForThem</code>（<code>:742-791</code>）只断言<strong>分类级</strong>可见性，不锁定 BYD_ADB 内的热点控件。</td><td>DA-022 本身可执行，但"既有测试零改动"的口径只对三个门禁测试成立：D-1 移动会让 <code>BydAdbSettingsUiTest</code>（<code>:68/:90</code>）与 <code>CarHotspotSwitchTest</code>（<code>:274-275</code>）失败，必须随设计更新并显式声明（G-12）。<code>AUTOMATIC_CONNECTION</code> 段基线已存在（<code>:119/:1778</code>），"新增段"表述应改为"段内新增"。</td></tr>
+    <tr><td class="id">DA-023</td><td><span class="pill ok">可执行</span></td><td>自动失败后 <code>ShadowAlertDialog.getLatestAlertDialog() == null</code>；手动热点关闭仍弹既有 dialog（<code>CarHotspotOffConnectTest</code> 已有范式）。</td><td>两点断言都有现成测试骨架。</td></tr>
+    <tr><td class="id">DA-024</td><td><span class="pill ok">可执行</span></td><td><code>SleepWakeTriggerTest</code>：<code>sendBroadcast(SCREEN_ON/USER_PRESENT)</code>、注册计数（<code>shadowOf(app).registeredReceivers</code>）、关闭后注销、启动失败写诊断。</td><td>需重置进程级 <code>AtomicBoolean</code>（G-08）。</td></tr>
+  </tbody>
+</table>
+
+<h3>4.1 两项"需澄清"的最小修复要求（不改设计语义）</h3>
+<table>
+  <caption>表 4-2 需澄清项与最小修复</caption>
+  <thead><tr><th scope="col">项</th><th scope="col">问题</th><th scope="col">最小修复（建议）</th><th scope="col">收口</th></tr></thead>
+  <tbody>
+    <tr><td class="id">DA-018</td><td><code>AutoConnectRecord</code> 不含字符串字段，"喂入 MAC/SSID"无法执行；且字段数在 AC-023（六）、§14.2（六/七）、§5.2（七）、§6.3（七 + at）、§9.3/H2 简报（八）之间不一致。</td><td>把验证方法改写为：报告行必须匹配 §9.3 的<strong>八字段固定顺序</strong>与枚举取值；行内不出现 MAC/IP/SSID/口令模式；另外保留 <code>DiagnosticRedactor</code> 的独立负例。并把各章字段数统一为 §9.3 口径（八）。</td><td>H2 前勘误；不影响 AC-023（"含六字段"仍满足）。</td></tr>
+    <tr><td class="id">DA-019</td><td>"未配对设备负例"没有 JVM 接缝；AC-020 标注"单测 + 真车"，但单测部分无落点。</td><td>二选一，建议 (a)：(a) 把 DA-019 的自动化部分限定为"源码规则（无认证开关/白名单）+ 既有 MFi 负例"，未配对负例整体归 H3 V-01…V-03；(b) 增加 fake-remote 注入点（新接缝，需设计确认，属实现范围）。</td><td>H2 前书面澄清；选 (b) 才需要回到设计加接缝。</td></tr>
+  </tbody>
+</table>
+
+<h3>4.2 其余非阻塞契约瑕疵（已在 G 系列登记）</h3>
+<ul>
+  <li><strong>G-07</strong>：<code>attemptPermit()</code> 与 <code>noteAttemptStarted()</code> 的双计数口径冲突（R-010 的具体形态），建议删掉后者或声明其为纯通知。</li>
+  <li><strong>G-06</strong>：诊断字段数 6/7/8 三处不一致；<code>AUTOMATIC_CONNECTION</code> 段"新增"表述与基线不符（段已存在）。</li>
+  <li><strong>G-08</strong>：<code>AutoConnectSession</code> 是 <code>object</code>、<code>SleepWakeTrigger</code> 用进程级 <code>AtomicBoolean</code>，设计未给测试重置契约，跨用例会残留状态。</li>
+</ul>
+</section>
+
+<section id="sec-5">
+<h2>5. AC-001…AC-025 验证路径</h2>
+<p>层级优先级：单测（纯 JVM）&gt; Robolectric（JVM 上驱动 Android 组件）&gt; CI 回归 &gt; 真车 V-0x &gt; 人工。真车项不得由 Agent 代验（项目约章 §3）。</p>
+<table>
+  <caption>表 5-1 25 条验收标准的验证路径</caption>
+  <thead><tr><th scope="col">AC</th><th scope="col">层级</th><th scope="col">接缝 / 证据</th><th scope="col">能证明什么</th><th scope="col">缺口 / 备注</th></tr></thead>
+  <tbody>
+    <tr><td class="id">AC-001</td><td>Robolectric</td><td><code>AutoConnectPreferences.recordSuccess/load</code> + Home 状态行</td><td>重启后首选/地址/名称/方式一致</td><td>无</td></tr>
+    <tr><td class="id">AC-002</td><td>单测 + 真车 V-01/V-02/V-03/V-04</td><td>Gate/Session 逻辑；H3 记录到首帧耗时</td><td>零交互决策路径</td><td>真实时延与 P50/P90 只能真车；10 样本统计口径见 G-10</td></tr>
+    <tr><td class="id">AC-003</td><td>Robolectric + 真车 V-01…V-03</td><td><code>PhoneBluetoothReceiver</code> + Session</td><td>15 s 窗口内 1 次、单实例、不重复</td><td>"系统是否放行后台启动"只有真车</td></tr>
+    <tr><td class="id">AC-004</td><td>Robolectric + 真车 V-01…V-03</td><td>Gate/Surface</td><td>自动路径无选择列表、无凭据输入、无 Connect 点按</td><td>真实系统权限首启对话框只有真车</td></tr>
+    <tr><td class="id">AC-005</td><td>单测</td><td><code>AutoConnectGate.resolveTarget()</code></td><td>首次 vs 后续互斥；首选失效不自动改选</td><td>无</td></tr>
+    <tr><td class="id">AC-006</td><td>真车 V-02</td><td>既有热点后端 + 诊断</td><td>自动开热点并等待就绪</td><td>只能 H3（固件/授权）</td></tr>
+    <tr><td class="id">AC-007</td><td>单测 + 真车 V-02/V-07</td><td>非可重试分支 + Surface</td><td>一次提示、不进入重试、给一步入口</td><td>具体固件表现只有真车</td></tr>
+    <tr><td class="id">AC-008</td><td>单测（伪时钟）+ 会话级</td><td>Budget + Session + 宿主许可</td><td>次数 ≤5、总时长 ≤150 s、退避 2/4/8/16</td><td>宿主侧截止无断言（G-01）</td></tr>
+    <tr><td class="id">AC-009</td><td>Robolectric</td><td>Surface + <code>ShadowAlertDialog</code></td><td>单一重试、无全屏阻塞框、设置保留</td><td>驾驶中观感只有真车</td></tr>
+    <tr><td class="id">AC-010</td><td>单测 + 真车 V-03</td><td>Gate 冲突 + <code>RecordingConnector</code></td><td>0 次 <code>start</code>，进入 NeedsChoice</td><td>真车蓝牙顺序差异</td></tr>
+    <tr><td class="id">AC-011</td><td>单测 + 真车 V-03</td><td>Receiver 首选过滤 + Session</td><td>不抢占、不产生第二会话</td><td>系统 ACL 顺序只有真车</td></tr>
+    <tr><td class="id">AC-012</td><td>Robolectric + 真车 V-01…V-03</td><td><code>SleepWakeTrigger</code> + Host 恢复钩子</td><td>事件 → 恢复调用；进程被杀退化 T-2</td><td>P90 ≤20 s 只有真车；样本量 G-10</td></tr>
+    <tr><td class="id">AC-013</td><td>Robolectric + 真车</td><td>Surface 状态回调</td><td>阶段推进后 1 个 tick 内文本变化</td><td>不证明真实 3 s/Robolectric 渲染帧率</td></tr>
+    <tr><td class="id">AC-014</td><td>Robolectric + 人工截图</td><td>设置 IA + 三个门禁测试 + 截图</td><td>唯一分类、11 语言、门禁测试未被削弱、默认值符合 D-002</td><td>"测试未被修改"需收窄口径：三个门禁测试零改动；<code>BydAdbSettingsUiTest</code>/<code>CarHotspotSwitchTest</code> 随 D-1 更新（G-12）；阿拉伯语截图由 build 产出</td></tr>
+    <tr><td class="id">AC-015</td><td>单测 + 真车抽测 V-07</td><td>Gate/Session.cancel + 手动连接</td><td>四触发不发起；手动仍可用；重开恢复</td><td>真车抽测</td></tr>
+    <tr><td class="id">AC-016</td><td>Robolectric</td><td>Session + <code>ShadowNotificationManager</code> + <code>nextStartedActivity</code> 计数</td><td>1 会话、1 前台通知、1 CarPlay 画面</td><td>DA-013 只覆盖会话数（G-02）</td></tr>
+    <tr><td class="id">AC-017</td><td>CI 回归</td><td>既有 USB 测试套</td><td>USB 行为不变、不发起无线会话</td><td>真实线缆行为不在 CI</td></tr>
+    <tr><td class="id">AC-018</td><td>单测</td><td>Diagnostics + <code>DiagnosticRedactor</code></td><td>报告行无 SSID/口令/MAC/IP/配对记录</td><td>整份报告其他行的覆盖依赖既有测试；字段口径 G-06</td></tr>
+    <tr><td class="id">AC-019</td><td>真车 dumpsys</td><td>2 h 空闲 <code>batterystats</code>/<code>alarm</code> 采样</td><td>轮询 ≤1 次/分钟、无持续 wakelock</td><td>H3 记录表 A-2 无该动作槽（G-04）</td></tr>
+    <tr><td class="id">AC-020</td><td>真车 V-01…V-03 + 源码规则</td><td>认证负例（真实 iAP2）</td><td>未配对/认证失败必须失败，不进入投屏</td><td>JVM 负例无接缝（G-03 / DA-019）</td></tr>
+    <tr><td class="id">AC-021</td><td>CI + 真车 V-05/V-06/V-08</td><td>既有回归矩阵 + 安装启动</td><td>四后端无新增失败</td><td>各固件差异只有真车</td></tr>
+    <tr><td class="id">AC-022</td><td>真车长跑</td><td>100 次冷启动/唤醒循环</td><td>0 ANR/崩溃/重复会话/泄漏</td><td>H3 记录表无 100 次循环动作槽（G-04）</td></tr>
+    <tr><td class="id">AC-023</td><td>单测</td><td>Diagnostics 固定字段</td><td>六字段齐全（设计实际输出八字段）</td><td>字段口径 G-06</td></tr>
+    <tr><td class="id">AC-024</td><td>Robolectric 语义 + 人工</td><td>Settings/Surface 语义断言 + 阿拉伯语/大字截图 + TalkBack</td><td>语义文本、checked 状态、焦点顺序</td><td>无 V 槽/人工证据槽（G-05）</td></tr>
+    <tr><td class="id">AC-025</td><td>Robolectric + 真车</td><td><code>ShadowAlertDialog</code> + 真车倒车影像场景</td><td>自动失败无阻塞框</td><td>"不覆盖倒车影像"只有真车；无 V 槽（G-04）</td></tr>
+  </tbody>
+</table>
+<div class="box">
+  <span class="t">统计口径</span>
+  16 条可在 JVM/Robolectric/CI 证明主体：AC-001/003/004/005/007/008/009/010/013/014/015/016/017/018/023/024。9 条必须由真车承载最终判定：AC-002/006/011/012/019/020/021/022/025。没有"无路径"的 AC。
+</div>
+</section>
+
+<section id="sec-6">
+<h2>6. 覆盖缺口与最小补充</h2>
+<p>以下 12 项都<strong>不改变 FR/NFR/AC 语义</strong>；每项只写最小动作、关联项与收口阶段。G-03/G-04/G-05/G-06/G-10/G-12 落在 H2 门禁包或文档口径上，需要人类在 H2 一并确认；其余在 test design/build 阶段收口。</p>
+<table>
+  <caption>表 6-1 缺口清单与最小补充</caption>
+  <thead><tr><th scope="col">ID</th><th scope="col">缺口 / 影响</th><th scope="col">关联</th><th scope="col">最小补充（接缝 / 可注入点 / 假件 / 文本）</th><th scope="col">收口</th></tr></thead>
+  <tbody>
+    <tr><td class="id">G-01</td><td>DA-006 只证明预算对象在 150 s 后返回 null；宿主是否在截止后真正停止重试没有断言，"≤150 s"缺端到端证据。</td><td>AC-008 / NFR-002 / DA-006</td><td>复用 §14.1"宿主重试集成"接缝：在 <code>WirelessStartupRecoveryTest</code> 增加 <code>sessionId≠null</code>、<code>attemptPermit</code> 返回 null 的用例，断言 <code>startupRetryStopped</code> 且无 <code>pendingReconnect</code>。无需新接缝。</td><td>test design</td></tr>
+    <tr><td class="id">G-02</td><td>DA-013 只断言 1 个会话；AC-016 还要求 1 个前台通知、1 个 CarPlay 画面。</td><td>AC-016 / DA-013</td><td>在 Surface/宿主测试里加 <code>shadowOf(NotificationManager)</code> 计数与 <code>nextStartedActivity</code> 计数（Robolectric 已具备）。</td><td>test design</td></tr>
+    <tr><td class="id">G-03</td><td>AC-020 的"未配对设备负例"没有 JVM 接缝，"单测"部分无落点。</td><td>AC-020 / DA-019</td><td>按 §4.1 方案 (a)：自动化限定为源码规则 + 既有 MFi 负例，未配对负例归 H3 V-01…V-03；若选 (b) 需新增 fake-remote 接缝。</td><td>H2 书面澄清</td></tr>
+    <tr><td class="id">G-04</td><td>需求附录 A 的 H3 动作表缺 3 项：空闲 2 h 功耗采样（AC-019）、100 次循环（AC-022）、倒车影像叠加（AC-025）。设计 §14.3 列了这些项，但记录表没有动作槽，H3 会漏记。</td><td>AC-019/022/025</td><td>在 H3 记录表 A-2 增加三行动作，指定 V-01（功耗）、V-03（100 次循环）、V-02（倒车影像）承担；不改 FR/NFR。</td><td>H2 门禁包</td></tr>
+    <tr><td class="id">G-05</td><td>AC-024 的阿拉伯语 RTL、大字、TalkBack 只有 build 截图，没有 H3 人工检查槽，最终判定无处落。</td><td>AC-024 / NFR-010</td><td>H3 记录表增加一行"阿拉伯语 RTL + 大字 + TalkBack 人工检查"，或明确以 build 截图 + 人工复核作为证据、H3 不重复。</td><td>H2 门禁包</td></tr>
+    <tr><td class="id">G-06</td><td>诊断字段数 6/7/8 三处不一致（AC-023 六、§14.2 六/七、§5.2 七、§6.3 七 + at、§9.3/H2 八）；<code>AUTOMATIC_CONNECTION</code> 段"新增"表述与基线（段已存在）不符。</td><td>AC-023 / DA-018 / DA-021 / DA-022</td><td>以 §9.3 的八字段为唯一口径，统一 §5.2/§6.3/§14.2 表述；§11/FR-011 的"新增卡片/段"改为"在既有段内新增总开关与子项"。</td><td>H2 前勘误</td></tr>
+    <tr><td class="id">G-07</td><td><code>attemptPermit()</code>（表 6-1：每次消耗配额）与 <code>noteAttemptStarted()</code>（注释：计数 +1）双计数，正是 R-010 的形态；会导致 attempts 提前耗尽或重复计数。</td><td>DA-005 / DA-008 / R-010</td><td>二选一：删 <code>noteAttemptStarted()</code>；或声明 <code>attemptPermit()</code> 为唯一计数点、<code>noteAttemptStarted()</code> 仅作纯通知（不 +1）。DA-005 断言保持。</td><td>build 前勘误</td></tr>
+    <tr><td class="id">G-08</td><td><code>AutoConnectSession</code> 是进程单例 <code>object</code>，<code>SleepWakeTrigger</code> 用进程级 <code>AtomicBoolean</code>；设计未给测试重置契约，跨用例状态残留会让 DA-009/013/024 互相污染。</td><td>DA-009/013/024</td><td>增加 <code>internal fun resetForTest()</code>（test-only）或在 <code>initialize()</code> 中完整重置为 <code>Idle</code>；生产语义不变。</td><td>test design / build</td></tr>
+    <tr><td class="id">G-09</td><td><code>common</code> 单测堆上限 <code>2g</code>，<code>build.gradle.kts</code> 注释明示"再加一个 Robolectric 类就会 OOM"；设计新增约 6 个 Robolectric 类会顶到上限。</td><td>全部 Robolectric DA</td><td>合并新增 Robolectric 类（建议 <code>AutoConnectSessionTest</code> + <code>AutoConnectUiTest</code> 两个），纯逻辑放 JVM 类；若 CI 仍 OOM，再评估 <code>2g→3g</code>（构建配置变更，需范围确认）。</td><td>test design</td></tr>
+    <tr><td class="id">G-10</td><td>NFR-001 的 P50/P90 在 H3 每槽位只有 10 次样本，P90 统计意义弱，判定口径未写。</td><td>AC-002/012 / NFR-001</td><td>每槽位 ≥20 次，或明确"记录全部样本、P90 取第 90 百分位"；或改报 P50 + max 并说明理由。</td><td>H2 门禁包</td></tr>
+    <tr><td class="id">G-11</td><td>DA-001/012/021 含内部负断言（"零绕过""不进入门禁""仍过 redact"），行为测试无法直接证明。</td><td>DA-001/012/021</td><td>测试只断言可观察行为（无启动/无会话/无诊断/报告行模式）；内部约束列为人工审查项写入评审清单，不伪装成自动化。</td><td>test design</td></tr>
+    <tr><td class="id">G-12</td><td>§17 D-1 把"自动打开车机热点"从 BYD_ADB 卡片移到 AUTOMATIC_CONNECTION 卡片，会让两个既有 <strong>section 级</strong>测试失败：<code>BydAdbSettingsUiTest</code>（<code>:68/:90</code> 在 <code>renderBydAdbControls</code> 结果里找该控件）与 <code>CarHotspotSwitchTest</code>（<code>:274-275</code> 只用 BYD_ADB 渲染结果找 <code>hotspotSwitch()</code>）。设计 §10.4/§16 R-007/§17 D-1 未登记这两个文件，AC-014"测试未被修改"按字面无法成立。</td><td>AC-014 / DA-022 / §17 D-1</td><td>1) 在 §10.4/§16 R-007 登记两个文件为"随 D-1 更新"：断言改为在 AUTOMATIC_CONNECTION 渲染中查同一控件、数量仍为 1，不删除/不放宽；2) AC-014 口径写成"三个门禁测试零改动；两个位置测试按 D-1 更新"；3) H2 明确授权这次测试更新（属设计已声明的移动，不是"改测试通过"）。</td><td>H2 门禁包 + build</td></tr>
+  </tbody>
+</table>
+<div class="box warn">
+  <span class="t">为什么这些不构成阻塞</span>
+  没有一项需要改 FR/NFR/AC，也没有一项要求新增权限、组件或重写设计；G-01/02/08/09 是测试实现方式，G-03/06/07/11 是文档口径，G-04/05/10 是 H3 记录表条目，G-12 是对"测试未被修改"的范围授权。它们都可以在 H2 后、build 前完成，且不影响设计语义。
+</div>
+</section>
+
+<section id="sec-7">
+<h2>7. 是否新增 <code>androidTest</code> 源集（建议）</h2>
+<div class="box ok">
+  <span class="t">建议：本需求不新增 <code>androidTest</code> 源集。</span>
+  用 <code>src/test</code> 的 Robolectric 覆盖可 JVM 证明的交互语义，用 H3 真车覆盖硬件相关项；不把无法在 CI 执行的测试塞进仓库。
+</div>
+<h3>7.1 依据（实测）</h3>
+<ul>
+  <li><strong>仓库现状</strong>：只有 <code>shared/src/test</code>、<code>common/src/test</code>、<code>samples/home/src/test</code>，没有 <code>androidTest</code> 目录。</li>
+  <li><strong>CI 现状</strong>：<code>.github/workflows/android.yml</code> 只跑 <code>:shared/:common/:home</code> 单测、<code>:mobile/:home/:maphost</code> lint、三个 debug APK 构建；没有模拟器、没有 <code>connectedAndroidTest</code>、没有设备农场。</li>
+  <li><strong>能力现状</strong>：<code>common</code> 已开 <code>unitTests.isIncludeAndroidResources = true</code> + Robolectric 4.17；现有测试已能驱动 <code>DiPlayActivity</code>、<code>PhoneBluetoothReceiver</code>、设置页、<code>ShadowAlertDialog</code>、<code>nextStartedActivity</code>。本需求需要的 JVM 交互语义不需要仪器测试。</li>
+  <li><strong>真车项的不可替代性</strong>：蓝牙 ACL 顺序、热点固件、休眠唤醒、倒车影像叠加、认证握手，在模拟器上同样无法证明——即使加了 <code>androidTest</code>，这些仍必须 H3。</li>
+</ul>
+<h3>7.2 理由</h3>
+<ol>
+  <li>新增源集会引入一批<strong>CI 永远跑不到</strong>的测试，违反"不伪造证据、不把未运行标成通过"（S01 协议第 8/9 条）。</li>
+  <li>要让它可执行，必须改 CI（加模拟器/设备农场）与模块结构，属于额外范围与时长，H1 的 C-1/A-007 没有授权，应由 H2 作为独立决策，而不是塞进本需求。</li>
+  <li>Robolectric 已覆盖本设计里所有"可在 JVM 证明"的断言；剩下的是 H3 的职责，不是测试层级的缺口。</li>
+</ol>
+<h3>7.3 如果将来确实需要</h3>
+<p>单独提范围决策：指定设备矩阵（API 24/29/33）、CI 模拟器任务与超时预算，并把"仪器测试必须真实运行"作为入口条件；在此之前不建空源集。该建议只作为 H2 参考，范围决定权在人类。</p>
+</section>
+
+<section id="sec-8">
+<h2>8. §20.2 回填与自检</h2>
+<h3>8.1 已回填到方案设计文档 §20.2 的内容</h3>
+<table>
+  <caption>表 8-1 表 20-2 回填摘要</caption>
+  <thead><tr><th scope="col">行</th><th scope="col">结论</th><th scope="col">备注（写入设计文档）</th></tr></thead>
+  <tbody>
+    <tr><td>DA-001…DA-024 是否可执行</td><td>通过（附 2 项澄清）</td><td>22 可执行 / 2 需澄清（DA-018、DA-019）/ 0 不可执行；澄清项见本文件 §4.1，不改变设计语义。</td></tr>
+    <tr><td>接缝是否足以覆盖 25 AC</td><td>通过（附 12 项补充）</td><td>25/25 有路径；4 条 H3 记录表缺动作槽，其余为接缝/契约/测试范围补充，见本文件 §6（G-01…G-12）。</td></tr>
+    <tr><td>是否需补仪器测试源集</td><td>通过（建议不新增）</td><td>CI 无设备；真车项在模拟器同样不可证；Robolectric 已覆盖 JVM 可证部分，见 §7。</td></tr>
+    <tr><td>阻塞项</td><td>通过（0 阻塞）</td><td>可进入 H2；2 项勘误 + 12 项补充在 build 前收口。</td></tr>
+  </tbody>
+</table>
+<h3>8.2 自检</h3>
+<ul>
+  <li>24 条 DA 全部有判定，无"待定"；25 条 AC 全部有验证路径，无空白行。</li>
+  <li>本文件自包含：UTF-8、内联 CSS、无外部字体/CDN/请求，<code>file://</code> 可打开。</li>
+  <li>目录链接与 9 个章节锚点一一对应；表头使用 <code>scope</code>；状态不只靠颜色（文字 + 徽标）。</li>
+  <li>未写入任何密钥、凭据、真实设备地址；示例仅用占位地址。</li>
+  <li>未改需求/设计语义，未写生产代码或测试，未改 issue 状态/assignee，未 @ 他人。</li>
+</ul>
+</section>
+
+<section id="sec-9">
+<h2>9. 变更记录</h2>
+<table>
+  <caption>表 9-1 版本历史</caption>
+  <thead><tr><th scope="col">版本</th><th scope="col">日期</th><th scope="col">变更</th><th scope="col">作者</th></tr></thead>
+  <tbody>
+    <tr><td>v1.0.0</td><td>2026-11-01</td><td>首版 A2 可测性预审：24 条 DA 判定、25 条 AC 验证路径、12 项缺口与最小补充、androidTest 建议、§20.2 回填。</td><td>KAR-04-TestDesigner</td></tr>
+  </tbody>
+</table>
+</section>
+
+<footer>
+  <p>KAR-04-TestDesigner · KAR-3 可测性预审 v1.0.0 · 2026-11-01 · 分支 <code>feat/KAR-3-auto-hotspot-connect</code> · 设计基线 <code>9b1a1a05</code> · 本文件为 H2 前技术闸材料；真车 0 项通过，未声称任何车型可用。</p>
+  <p><a href="#sec-1">返回文档控制</a> · <a href="方案设计文档.html">方案设计文档</a> · <a href="H2-决策简报.html">H2-决策简报</a></p>
+</footer>
+</main>
+</div>
+</body>
+</html>
