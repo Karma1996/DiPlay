@@ -290,6 +290,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     private var bydAdbAccess: LocalAdb.Access? = null
     internal var autoConnectSessionId: Long? = null
     private var autoConnectState: AutoConnectState = AutoConnectState.Idle
+    private var homeAutoConnectNotice: TextView? = null
     private var lastAutoConnectTrigger: AutoConnectTrigger? = null
     private var lastAutoConnectTriggerAt = 0L
     private var pendingColdStart = false
@@ -728,7 +729,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             (settingsSearchExpanded && settingsSearchBox?.hasFocus() == true)
         settingsSearchBox = null
         if (page != "settings") clearSettingsSearchState()
-        status = null; homeLastProblem = null; connectButton = null; disconnectButton = null; lastRunning = null; carButtonCard = null
+        status = null; homeLastProblem = null; homeAutoConnectNotice = null; connectButton = null; disconnectButton = null; lastRunning = null; carButtonCard = null
         reconnectBar = null
         readinessCard = null
         exportButton = null
@@ -1020,6 +1021,10 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         } else {
             homeLastProblem = label("", 15, MUTED).apply { setPadding(0, dp(14), 0, 0) }.also(card::addView)
         }
+        // SC-005: the one-time "automatic connection is on" line, consumed on the first render.
+        homeAutoConnectNotice = label(getString(R.string.settings_auto_connect_enabled_notice), 15, READY)
+            .apply { setPadding(0, dp(10), 0, 0); visibility = View.GONE }
+            .also(card::addView)
         card.addView(homeButton(getString(R.string.choose_iphone), false) { choosePhone() }, matchButton(if (compact) CONTROL_GAP_DP else 16, if (compact) 46 else 56))
         disconnectButton = homeButton(getString(R.string.disconnect), false) {
             disconnectButton?.isEnabled = false
@@ -5855,6 +5860,9 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             DiPlayPreferences.phoneAddress(this) != null -> "${getString(R.string.status_ready_for_prefix)}${DiPlayPreferences.phoneName(this)}"
             else -> getString(R.string.ready_when_you_are)
         }
+        homeAutoConnectNotice?.apply {
+            visibility = if (AutoConnectPreferences.takeOptInNotice(this@DiPlayActivity)) View.VISIBLE else View.GONE
+        }
         homeLastProblem?.apply {
             val autoLine = autoConnectNoticeLine(autoState)
             val line = if (CarPlayBackgroundSession.active) null
@@ -6390,7 +6398,11 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         val usable = AutoConnectPreferences.masterEnabled(this) &&
             DiPlayPreferences.phoneAddress(this) != null
         if (usable) {
-            SleepWakeTrigger.ensureRegistered(applicationContext) { offerAutoConnect(AutoConnectTrigger.SLEEP_WAKE) }
+            SleepWakeTrigger.ensureRegistered(applicationContext) {
+                // A live projection recovers through the host's existing path; otherwise start a session.
+                val screen = CarPlayScreen.current()
+                if (screen != null) screen.onWakeRecover() else offerAutoConnect(AutoConnectTrigger.SLEEP_WAKE)
+            }
         } else {
             SleepWakeTrigger.unregister(applicationContext)
         }

@@ -83,6 +83,17 @@ internal object AutoConnectPreferences {
         prefs(context).edit().putBoolean(KEY_NOTICE_SHOWN, true).commit()
     }
 
+    /**
+     * SC-005: true exactly once, on the first Home render after the automatic opt-in. Taking it
+     * marks it shown, so the driver is told the switch was turned on without being nagged.
+     */
+    fun takeOptInNotice(context: Context): Boolean {
+        if (noticeShown(context)) return false
+        if (optIn(context) != AutoConnectOptIn.ENABLED_AUTO) return false
+        markNoticeShown(context)
+        return true
+    }
+
     fun preferred(context: Context): PreferredIphone? {
         val address = DiPlayPreferences.phoneAddress(context) ?: return null
         val prefs = prefs(context)

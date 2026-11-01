@@ -6963,6 +6963,17 @@ open class CarPlayHostActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * FR-009: a wake event with a live projection whose stream already dropped goes through the
+     * existing reconnect path, including the automatic session's budget. A healthy stream is left
+     * alone, and a screen that is not the owner does nothing.
+     */
+    internal fun onWakeRecover() {
+        if (shuttingDown.get() || !CarPlayBackgroundSession.isOwner(this)) return
+        if (CarPlayBackgroundSession.active || reconnectScheduled) return
+        reconnectAfterLoss("wake with a dropped stream")
+    }
+
     /** Only DiPlay's own launch may hand a session over; an exported Activity is reachable by anyone. */
     private fun readAutoConnectSession(intent: Intent?) {
         intent ?: return

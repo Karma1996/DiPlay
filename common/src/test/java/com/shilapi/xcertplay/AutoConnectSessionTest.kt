@@ -139,6 +139,14 @@ class AutoConnectSessionTest {
         assertEquals(AutoConnectOptIn.ENABLED_AUTO, AutoConnectPreferences.optIn(app))
     }
 
+    @Test fun optInNoticeIsShownOnce() {
+        savePreferred()
+        AutoConnectPreferences.ensureMigrated(app)
+        AutoConnectPreferences.recordSuccess(app, WirelessHotspotMode.MANUAL, 1_000L)
+        assertTrue("the first Home render after opt-in shows the notice", AutoConnectPreferences.takeOptInNotice(app))
+        assertFalse("the notice is one-time", AutoConnectPreferences.takeOptInNotice(app))
+    }
+
     @Test fun disabledUserNeverAutoReenables() {
         savePreferred()
         AutoConnectPreferences.ensureMigrated(app)
@@ -147,6 +155,7 @@ class AutoConnectSessionTest {
         AutoConnectPreferences.recordSuccess(app, WirelessHotspotMode.MANUAL, 3_000L)
         assertFalse(AutoConnectPreferences.masterEnabled(app))
         assertEquals(AutoConnectOptIn.DISABLED_USER, AutoConnectPreferences.optIn(app))
+        assertFalse("a user who turned it off is never told it turned itself on", AutoConnectPreferences.takeOptInNotice(app))
     }
 
     @Test fun successPersistsPreferredFacts() {

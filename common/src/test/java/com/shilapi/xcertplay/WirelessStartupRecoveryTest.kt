@@ -8,11 +8,20 @@ import android.os.Looper
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
+import com.shilapi.xcertplay.autoconnect.AutoConnectConnector
+import com.shilapi.xcertplay.autoconnect.AutoConnectEnvironment
+import com.shilapi.xcertplay.autoconnect.AutoConnectPreferences
+import com.shilapi.xcertplay.autoconnect.AutoConnectRequest
+import com.shilapi.xcertplay.autoconnect.AutoConnectSession
+import com.shilapi.xcertplay.autoconnect.AutoConnectTrigger
+import com.shilapi.xcertplay.autoconnect.BondedIphone
+import com.shilapi.xcertplay.autoconnect.HotspotState
 import com.shilapi.xcertplay.host.R
 import com.shilapi.xcertplay.network.WirelessStartupException
 import com.shilapi.xcertplay.network.WirelessStartupFailure
 import com.shilapi.xcertplay.orchestration.CarPlayStatus
 import com.shilapi.xcertplay.orchestration.ConnectionFailureCause
+import com.shilapi.xcertplay.orchestration.WirelessHotspotMode
 import com.shilapi.xcertplay.transport.BluetoothLinkCheck
 import com.shilapi.xcertplay.transport.BluetoothRadioCheck
 import org.junit.After
@@ -26,7 +35,9 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.LooperMode
 import org.robolectric.util.ReflectionHelpers
+import org.robolectric.shadows.ShadowSystemClock
 import org.robolectric.util.ReflectionHelpers.ClassParameter.from
+import java.time.Duration
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -57,6 +68,95 @@ class WirelessStartupRecoveryTest {
             from(Int::class.javaPrimitiveType, generation))(status)
     }
     private fun budget() = ReflectionHelpers.getField<WirelessStartupRetryBudget>(activity, "startupRetryBudget")
+
+    /**
+     * Starts a real automatic session in this process. Its budget begins at the current
+     * ShadowSystemClock, so the test can move the clock instead of sleeping.
+     */
+    private fun startAutomaticSession(): Long {
+        val app = org.robolectric.RuntimeEnvironment.getApplication()
+        for (name in listOf("diplay", "diplay_auto_connect_diag", "diplay_last_problem")) {
+            app.getSharedPreferences(name, android.content.Context.MODE_PRIVATE).edit().clear().commit()
+        }
+        AutoConnectPreferences.resetForTest(app)
+        com.shilapi.xcertplay.autoconnect.AutoConnectDiagnostics.resetForTest(app)
+        AutoConnectSession.resetForTest()
+        AutoConnectSession.initialize(app, object : AutoConnectConnector {
+            override fun start(request: AutoConnectRequest) = true
+            override fun cancelSession(sessionId: Long) = Unit
+        })
+        DiPlayPreferences.savePhone(app, "AA:BB:CC:DD:EE:01", "iPhone")
+        AutoConnectPreferences.ensureMigrated(app)
+        AutoConnectPreferences.setMaster(app, true, byUser = true)
+        DiPlayPreferences.saveAutoConnect(app, true)
+        AutoConnectSession.offer(
+            AutoConnectTrigger.APP_OPENED,
+            AutoConnectEnvironment(
+                masterEnabled = true,
+                openOnLaunch = true,
+                connectOnPhoneBluetooth = true,
+                autoStartOnBoot = true,
+                wirelessMode = WirelessHotspotMode.MANUAL,
+                preferredAddress = "AA:BB:CC:DD:EE:01",
+                preferredLastSuccessAt = null,
+                bondedIphones = listOf(BondedIphone("AA:BB:CC:DD:EE:01")),
+                bluetoothPermission = true,
+                overlayPermission = true,
+                writeSettingsOrAdbHotspot = true,
+                hotspotState = HotspotState.ON,
+                nowElapsedMillis = 0L,
+            ),
+        )
+        return AutoConnectSession.activeSessionId() ?: error("the automatic session did not start")
+    }
+
+    // --- G-01: the host spends the automatic session's own budget (TC-046, TC-047) ---
+
+    @Test fun wakeRecoveryOnlyActsOnADroppedStreamItOwns() {
+        // Not the owner: a wake event does nothing.
+        ReflectionHelpers.setField(CarPlayBackgroundSession, "owner", null)
+        activity.onWakeRecover()
+        assertFalse(ReflectionHelpers.getField(activity, "reconnectScheduled"))
+        // Owner with a healthy stream: the wake event leaves it alone.
+        ReflectionHelpers.setField(CarPlayBackgroundSession, "owner", activity)
+        CarPlayBackgroundSession.active = true
+        activity.onWakeRecover()
+        assertFalse(ReflectionHelpers.getField(activity, "reconnectScheduled"))
+        // Owner with a dropped stream: the existing recovery path is used.
+        CarPlayBackgroundSession.active = false
+        activity.onWakeRecover()
+        assertTrue(ReflectionHelpers.getField(activity, "reconnectScheduled"))
+    }
+
+    @Test fun hostStopsWhenAutomaticSessionPermitIsNull() {
+        val id = startAutomaticSession()
+        ReflectionHelpers.setField(activity, "autoConnectSessionId", id)
+        // The session consumed its first attempt when it started; spend the other four.
+        repeat(4) { assertNotNull(AutoConnectSession.attemptPermit(id)) }
+        report()
+        assertTrue(ReflectionHelpers.getField(activity, "startupRetryStopped"))
+        assertFalse(ReflectionHelpers.getField(activity, "reconnectScheduled"))
+        assertEquals(View.VISIBLE, retry.visibility)
+        assertNull("the sixth permit stays null", AutoConnectSession.attemptPermit(id))
+    }
+
+    @Test fun hostHonoursTheAutomaticSessionDeadline() {
+        val id = startAutomaticSession()
+        ReflectionHelpers.setField(activity, "autoConnectSessionId", id)
+        ShadowSystemClock.advanceBy(Duration.ofSeconds(100))
+        report()
+        assertFalse("100 s in, a retry is still allowed", ReflectionHelpers.getField(activity, "startupRetryStopped"))
+        assertTrue(ReflectionHelpers.getField(activity, "reconnectScheduled"))
+        // Drop the pending retry, then move past the same session's 150 s deadline.
+        ReflectionHelpers.getField<Handler>(activity, "mainHandler").removeCallbacksAndMessages(null)
+        ReflectionHelpers.setField(activity, "reconnectScheduled", false)
+        ReflectionHelpers.setField(activity, "restartGeneration", 1)
+        ShadowSystemClock.advanceBy(Duration.ofSeconds(51))
+        report(generation = 1)
+        assertTrue("past 150 s the host must stop", ReflectionHelpers.getField(activity, "startupRetryStopped"))
+        assertFalse(ReflectionHelpers.getField(activity, "reconnectScheduled"))
+        assertNull(AutoConnectSession.attemptPermit(id))
+    }
 
     @Test fun duplicateFailureAndCleanupErrorScheduleOnlyOneRetry() {
         report()
