@@ -116,7 +116,8 @@ nav a{color:var(--accent);text-decoration:none}
 <h3>3.2 修改的既有文件</h3>
 <table>
 <tr><th>文件</th><th>改动</th></tr>
-<tr><td><code>DiPlayActivity.kt</code></td><td>新增 <code>automaticConnectionSettings()</code> 渲染器（总开关 + 子项禁用 + 热点控件迁入）；<code>onResume</code> 统一 offer 触发；手动 <code>connect()</code> 取消自动会话；Home inline notice；诊断行；连接器与唤醒注册</td></tr>
+<tr><td><code>DiPlayActivity.kt</code></td><td>新增 <code>automaticConnectionSettings()</code> 渲染器（总开关 + 子项禁用 + 热点控件迁入）；<code>onResume</code> 统一 offer 触发；手动 <code>connect()</code> 取消自动会话；Home inline notice；诊断行；连接器与唤醒注册；自动会话 id 随内部令牌交给 CarPlay 屏</td></tr>
+<tr><td><code>CarPlayHostActivity.kt</code></td><td>读取自动会话 id（仅接受进程内令牌）；<code>reconnectAfterLoss</code> 每次自动重启前申请预算许可，耗尽即停并显示既有重试 UI；首帧回写 <code>onConnected</code></td></tr>
 <tr><td><code>BootReceiver.kt</code></td><td>冷启动令牌 extra（进程内随机 UUID）</td></tr>
 <tr><td><code>PhoneBluetoothReceiver.kt</code></td><td>总开关前置判断（关闭即不启动 Activity）</td></tr>
 <tr><td><code>DiPlayBootstrap.kt</code></td><td><code>DiPlayPreferences</code> 暴露 prefs 名与首选键常量（行为不变）</td></tr>
